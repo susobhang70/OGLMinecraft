@@ -640,6 +640,8 @@ void Cuboid::createCuboid(GLuint textureID, int blocktype)
 		grassBlock();
 	else if(blocktype == 2)
 		waterBlock();
+	else if(blocktype == 3)
+		return;
  	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
 }
 
@@ -854,6 +856,7 @@ class Player : public Cuboid
 		void moveBackward();
 		void moveLeft();
 		void moveRight();
+		void playerHeadBlock();
 };
 
 Player::Player(float x, float y, float z, float length, float width, float height): Cuboid(x, y, z, length, width, height)
@@ -868,7 +871,26 @@ Player::Player(Player &p): Cuboid(p)
 
 void Player::createPlayer(GLuint texturePlayer)
 {
-	createCuboid(texturePlayer, 2);
+	createCuboid(texturePlayer, 3);
+	playerHeadBlock();
+	return;
+}
+
+void Player::playerHeadBlock()
+{
+	for(int v = 0; v < 36; v++)
+	{
+		m_texture_buffer_data[2*v + 0] = 1;
+		m_texture_buffer_data[2*v + 1] = 1;
+	}
+
+ 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 28.0/420.0;
+ 	m_texture_buffer_data[13] = m_texture_buffer_data[19] = m_texture_buffer_data[21] = 0;
+ 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 84.0/420.0;
+	m_texture_buffer_data[15] = m_texture_buffer_data[17] = m_texture_buffer_data[23] = 56.0/224.0;
+
+ 	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
+
 	return;
 }
 
@@ -1105,7 +1127,7 @@ void initGL (GLFWwindow* window, int width, int height)
 	if(textureWater == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	GLuint texturePlayer = createTexture("skin.png");
+	GLuint texturePlayer = createTexture("skin2.png");
 	// check for an error during the load process
 	if(textureWater == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
@@ -1153,8 +1175,8 @@ void draw ()
     glUseProgram(textureProgramID);
 
   // Eye - Location of camera. Don't change unless you are sure!!
-  // glm::vec3 eye ( 5*cos(camera_rotation_angle*M_PI/180.0f), 10, 5*sin(camera_rotation_angle*M_PI/180.0f) );
-  glm::vec3 eye ( -1.5 + player->getX(), 3 + player->getY(), 0 + player->getZ());
+  glm::vec3 eye ( 5*cos(camera_rotation_angle*M_PI/180.0f), 5, 5*sin(camera_rotation_angle*M_PI/180.0f) );
+  // glm::vec3 eye ( -0.5 + player->getX(), 3 + player->getY(), 0 + player->getZ());
   // Target - Where is the camera looking at.  Don't change unless you are sure!!
   glm::vec3 target (player->getX(), player->getY(), player->getZ());
   // Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
