@@ -878,6 +878,8 @@ void Player::createPlayer(GLuint texturePlayer, int part)
 		playerHeadBlock();
 	else if(part == 2)
 		playerBodyBlock();
+	else if(part == 3)
+		playerLegBlock();
 	return;
 }
 
@@ -926,9 +928,9 @@ void Player::playerBodyBlock()
 
 	int offset = 12;
 
- 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 28.0/420.0;
+ 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 0.0/420.0;
  	m_texture_buffer_data[13] = m_texture_buffer_data[19] = m_texture_buffer_data[21] = 56.0/224.0;
- 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 84.0/420.0;
+ 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 112.0/420.0;
 	m_texture_buffer_data[15] = m_texture_buffer_data[17] = m_texture_buffer_data[23] = 140.0/224.0;
 
 	m_texture_buffer_data[12+offset] = m_texture_buffer_data[18+offset] = m_texture_buffer_data[14+offset] = 378.0/420.0;
@@ -960,19 +962,19 @@ void Player::playerLegBlock()
 
 	int offset = 12;
 
- 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 0.0/420.0;
+ 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 28.0/420.0;
  	m_texture_buffer_data[13] = m_texture_buffer_data[19] = m_texture_buffer_data[21] = 140.0/224.0;
- 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 112.0/420.0;
+ 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 84.0/420.0;
 	m_texture_buffer_data[15] = m_texture_buffer_data[17] = m_texture_buffer_data[23] = 224.0/224.0;
 
-	m_texture_buffer_data[12+offset] = m_texture_buffer_data[18+offset] = m_texture_buffer_data[14+offset] = 364.0/420.0;
+	m_texture_buffer_data[12+offset] = m_texture_buffer_data[18+offset] = m_texture_buffer_data[14+offset] = 378.0/420.0;
  	m_texture_buffer_data[13+offset] = m_texture_buffer_data[19+offset] = m_texture_buffer_data[21+offset] = 140.0/224.0;
- 	m_texture_buffer_data[20+offset] = m_texture_buffer_data[16+offset] = m_texture_buffer_data[22+offset] = 420.0/420.0;
+ 	m_texture_buffer_data[20+offset] = m_texture_buffer_data[16+offset] = m_texture_buffer_data[22+offset] = 406.0/420.0;
 	m_texture_buffer_data[15+offset] = m_texture_buffer_data[17+offset] = m_texture_buffer_data[23+offset] = 224.0/224.0;
 
-	m_texture_buffer_data[12-offset] = m_texture_buffer_data[18-offset] = m_texture_buffer_data[14-offset] = 140.0/420.0;
+	m_texture_buffer_data[12-offset] = m_texture_buffer_data[18-offset] = m_texture_buffer_data[14-offset] = 154.0/420.0;
  	m_texture_buffer_data[13-offset] = m_texture_buffer_data[19-offset] = m_texture_buffer_data[21-offset] = 140.0/224.0;
- 	m_texture_buffer_data[20-offset] = m_texture_buffer_data[16-offset] = m_texture_buffer_data[22-offset] = 196.0/420.0;
+ 	m_texture_buffer_data[20-offset] = m_texture_buffer_data[16-offset] = m_texture_buffer_data[22-offset] = 182.0/420.0;
 	m_texture_buffer_data[15-offset] = m_texture_buffer_data[17-offset] = m_texture_buffer_data[23-offset] = 224.0/224.0;
 
 	m_texture_buffer_data[12+(2*offset)] = m_texture_buffer_data[18+(2*offset)] = m_texture_buffer_data[14+(2*offset)] = 252.0/420.0;
@@ -1006,7 +1008,7 @@ void Player::moveRight()
 // Cuboid c(0, 0, 0, 5, 5, 5);
 vector<Cuboid *> field;
 vector<Cuboid *> water;
-Player *playerHead, *playerBody;
+Player *playerHead, *playerBody, *playerLegs;
 
 void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlayer)
 {
@@ -1035,6 +1037,8 @@ void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlaye
 	playerHead->createPlayer(TexturePlayer, 1);
 	playerBody = new Player(0, 2.44, 0.28, 1.12, 0.56, 1.12);
 	playerBody->createPlayer(TexturePlayer, 2);
+	playerLegs = new Player(0, 1.32, 0, 1.12, 0.56, 0.56);
+	playerLegs->createPlayer(TexturePlayer, 3);
 }
 
 void drawWorld()
@@ -1049,30 +1053,35 @@ void drawWorld()
 	}
 	playerHead->draw();
 	playerBody->draw();
+	playerLegs->draw();
 }
 
 void moveForward()
 {
 	playerHead->moveForward();
 	playerBody->moveForward();
+	playerLegs->moveForward();
 }
 
 void moveBackward()
 {
 	playerHead->moveBackward();
 	playerBody->moveBackward();
+	playerLegs->moveBackward();
 }
 
 void moveLeft()
 {
 	playerHead->moveLeft();
 	playerBody->moveLeft();
+	playerLegs->moveLeft();
 }
 
 void moveRight()
 {
 	playerHead->moveRight();
 	playerBody->moveRight();
+	playerLegs->moveRight();
 }
 
 /* Executed when a regular key is pressed/released/held-down */
@@ -1291,8 +1300,8 @@ void draw ()
     glUseProgram(textureProgramID);
 
   // Eye - Location of camera. Don't change unless you are sure!!
-  // glm::vec3 eye ( 5*cos(camera_rotation_angle*M_PI/180.0f), 5, 5*sin(camera_rotation_angle*M_PI/180.0f) );
-  glm::vec3 eye ( -1.5 + playerHead->getX(), 2 + playerHead->getY(), 0 + playerHead->getZ());
+  glm::vec3 eye ( 5*cos(camera_rotation_angle*M_PI/180.0f), 5, 5*sin(camera_rotation_angle*M_PI/180.0f) );
+  // glm::vec3 eye ( -1.5 + playerHead->getX(), 2 + playerHead->getY(), 0 + playerHead->getZ());
   // Target - Where is the camera looking at.  Don't change unless you are sure!!
   glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ());
   // Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
