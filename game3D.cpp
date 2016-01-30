@@ -15,7 +15,12 @@
 
 #define YELLOW 1.0f, 1.0f, 0.0f
 
+#define move_threshhold 1.2
+
+
 using namespace std;
+
+int defaultCam = 1;
 
 struct VAO {
     GLuint VertexArrayID;
@@ -420,7 +425,7 @@ void createRectangle ()
 class Cuboid
 {
 	protected:
-		float m_x, m_y, m_z;
+		float m_x, m_y, m_z, m_rotation;
 		float m_height, m_width, m_length;
 		GLfloat m_vertex_buffer_data[12*3*3];
 		GLfloat m_color_buffer_data[12*3*3];
@@ -448,7 +453,7 @@ Cuboid::Cuboid(float x, float y, float z, float length, float width, float heigh
 	m_length = length;
 	m_width = width;
 	m_height = height;
-
+	m_rotation = 0;
 	m_cuboid = NULL;
 
 }
@@ -462,6 +467,7 @@ Cuboid::Cuboid(Cuboid &c)
 	m_width = c.m_width;
 	m_height = c.m_height;
 	m_cuboid = c.m_cuboid;
+	m_rotation = c.m_rotation;
 }
 
 void Cuboid::createCuboid(GLuint textureID, int blocktype)
@@ -821,8 +827,8 @@ void Cuboid::draw ()
 
   Matrices.model = glm::mat4(1.0f);
   glm::mat4 translateCube = glm::translate (glm::vec3(m_x, m_y, m_z));  
-  //glm::mat4 rotateCube = glm::rotate((float)(cube_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
-  Matrices.model *= (translateCube);
+  glm::mat4 rotateCube = glm::rotate((float)(m_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
+  Matrices.model *= (translateCube * rotateCube);
   MVP = Matrices.projection * Matrices.view* Matrices.model;
 
   // glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
@@ -847,6 +853,9 @@ void Cuboid::draw ()
 
 class Player : public Cuboid
 {
+	private:
+		int m_type;
+		float m_totalmove, m_rotationincrement;
 
 	public:
 		Player(float x, float y, float z, float length, float width, float height);
@@ -859,27 +868,48 @@ class Player : public Cuboid
 		void playerHeadBlock();
 		void playerBodyBlock();
 		void playerLegBlock();
+		void playerRightHandBlock();
+		void playerLeftHandBlock();
 };
 
 Player::Player(float x, float y, float z, float length, float width, float height): Cuboid(x, y, z, length, width, height)
 {
-
+	m_type = 0;
 }
 
 Player::Player(Player &p): Cuboid(p)
 {
-
+	m_type = p.m_type;
 }
 
 void Player::createPlayer(GLuint texturePlayer, int part)
 {
 	createCuboid(texturePlayer, 3);
+	m_type = part;
 	if(part == 1)
 		playerHeadBlock();
 	else if(part == 2)
 		playerBodyBlock();
 	else if(part == 3)
+	{
 		playerLegBlock();
+		m_rotationincrement = -5.0;
+	}
+	else if(part == 4)
+	{
+		playerLeftHandBlock();
+		m_rotationincrement = 5.0;
+	}
+	else if(part == 5)
+	{
+		playerRightHandBlock();
+		m_rotationincrement = -5.0;
+	}
+	else if(part == 6)
+	{
+		playerLegBlock();
+		m_rotationincrement = 5.0;
+	}
 	return;
 }
 
@@ -928,9 +958,9 @@ void Player::playerBodyBlock()
 
 	int offset = 12;
 
- 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 0.0/420.0;
+ 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 28.0/420.0;
  	m_texture_buffer_data[13] = m_texture_buffer_data[19] = m_texture_buffer_data[21] = 56.0/224.0;
- 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 112.0/420.0;
+ 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 84.0/420.0;
 	m_texture_buffer_data[15] = m_texture_buffer_data[17] = m_texture_buffer_data[23] = 140.0/224.0;
 
 	m_texture_buffer_data[12+offset] = m_texture_buffer_data[18+offset] = m_texture_buffer_data[14+offset] = 378.0/420.0;
@@ -943,9 +973,9 @@ void Player::playerBodyBlock()
  	m_texture_buffer_data[20-offset] = m_texture_buffer_data[16-offset] = m_texture_buffer_data[22-offset] = 182.0/420.0;
 	m_texture_buffer_data[15-offset] = m_texture_buffer_data[17-offset] = m_texture_buffer_data[23-offset] = 140.0/224.0;
 
-	m_texture_buffer_data[12+(2*offset)] = m_texture_buffer_data[18+(2*offset)] = m_texture_buffer_data[14+(2*offset)] = 224.0/420.0;
+	m_texture_buffer_data[12+(2*offset)] = m_texture_buffer_data[18+(2*offset)] = m_texture_buffer_data[14+(2*offset)] = 252.0/420.0;
  	m_texture_buffer_data[13+(2*offset)] = m_texture_buffer_data[19+(2*offset)] = m_texture_buffer_data[21+(2*offset)] = 56.0/224.0;
- 	m_texture_buffer_data[20+(2*offset)] = m_texture_buffer_data[16+(2*offset)] = m_texture_buffer_data[22+(2*offset)] = 336.0/420.0;
+ 	m_texture_buffer_data[20+(2*offset)] = m_texture_buffer_data[16+(2*offset)] = m_texture_buffer_data[22+(2*offset)] = 308.0/420.0;
 	m_texture_buffer_data[15+(2*offset)] = m_texture_buffer_data[17+(2*offset)] = m_texture_buffer_data[23+(2*offset)] = 140.0/224.0;
 
  	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
@@ -985,32 +1015,154 @@ void Player::playerLegBlock()
  	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
 }
 
+void Player::playerRightHandBlock()
+{
+	for(int v = 0; v < 36; v++)
+	{
+		m_texture_buffer_data[2*v + 0] = 0;
+		m_texture_buffer_data[2*v + 1] = 0;
+	}
+
+	int offset = 12;
+
+ 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 0.0/420.0;
+ 	m_texture_buffer_data[13] = m_texture_buffer_data[19] = m_texture_buffer_data[21] = 56.0/224.0;
+ 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 28.0/420.0;
+	m_texture_buffer_data[15] = m_texture_buffer_data[17] = m_texture_buffer_data[23] = 140.0/224.0;
+
+	m_texture_buffer_data[12+offset] = m_texture_buffer_data[18+offset] = m_texture_buffer_data[14+offset] = 378.0/420.0;
+ 	m_texture_buffer_data[13+offset] = m_texture_buffer_data[19+offset] = m_texture_buffer_data[21+offset] = 56.0/224.0;
+ 	m_texture_buffer_data[20+offset] = m_texture_buffer_data[16+offset] = m_texture_buffer_data[22+offset] = 406.0/420.0;
+	m_texture_buffer_data[15+offset] = m_texture_buffer_data[17+offset] = m_texture_buffer_data[23+offset] = 140.0/224.0;
+
+	m_texture_buffer_data[12-offset] = m_texture_buffer_data[18-offset] = m_texture_buffer_data[14-offset] = 154.0/420.0;
+ 	m_texture_buffer_data[13-offset] = m_texture_buffer_data[19-offset] = m_texture_buffer_data[21-offset] = 56.0/224.0;
+ 	m_texture_buffer_data[20-offset] = m_texture_buffer_data[16-offset] = m_texture_buffer_data[22-offset] = 182.0/420.0;
+	m_texture_buffer_data[15-offset] = m_texture_buffer_data[17-offset] = m_texture_buffer_data[23-offset] = 140.0/224.0;
+
+	m_texture_buffer_data[12+(2*offset)] = m_texture_buffer_data[18+(2*offset)] = m_texture_buffer_data[14+(2*offset)] = 308.0/420.0;
+ 	m_texture_buffer_data[13+(2*offset)] = m_texture_buffer_data[19+(2*offset)] = m_texture_buffer_data[21+(2*offset)] = 56.0/224.0;
+ 	m_texture_buffer_data[20+(2*offset)] = m_texture_buffer_data[16+(2*offset)] = m_texture_buffer_data[22+(2*offset)] = 336.0/420.0;
+	m_texture_buffer_data[15+(2*offset)] = m_texture_buffer_data[17+(2*offset)] = m_texture_buffer_data[23+(2*offset)] = 140.0/224.0;
+
+ 	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
+}
+
+void Player::playerLeftHandBlock()
+{
+	for(int v = 0; v < 36; v++)
+	{
+		m_texture_buffer_data[2*v + 0] = 0;
+		m_texture_buffer_data[2*v + 1] = 0;
+	}
+
+	int offset = 12;
+
+ 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 84.0/420.0;
+ 	m_texture_buffer_data[13] = m_texture_buffer_data[19] = m_texture_buffer_data[21] = 56.0/224.0;
+ 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 112.0/420.0;
+	m_texture_buffer_data[15] = m_texture_buffer_data[17] = m_texture_buffer_data[23] = 140.0/224.0;
+
+	m_texture_buffer_data[12+offset] = m_texture_buffer_data[18+offset] = m_texture_buffer_data[14+offset] = 378.0/420.0;
+ 	m_texture_buffer_data[13+offset] = m_texture_buffer_data[19+offset] = m_texture_buffer_data[21+offset] = 56.0/224.0;
+ 	m_texture_buffer_data[20+offset] = m_texture_buffer_data[16+offset] = m_texture_buffer_data[22+offset] = 406.0/420.0;
+	m_texture_buffer_data[15+offset] = m_texture_buffer_data[17+offset] = m_texture_buffer_data[23+offset] = 140.0/224.0;
+
+	m_texture_buffer_data[12-offset] = m_texture_buffer_data[18-offset] = m_texture_buffer_data[14-offset] = 154.0/420.0;
+ 	m_texture_buffer_data[13-offset] = m_texture_buffer_data[19-offset] = m_texture_buffer_data[21-offset] = 56.0/224.0;
+ 	m_texture_buffer_data[20-offset] = m_texture_buffer_data[16-offset] = m_texture_buffer_data[22-offset] = 182.0/420.0;
+	m_texture_buffer_data[15-offset] = m_texture_buffer_data[17-offset] = m_texture_buffer_data[23-offset] = 140.0/224.0;
+
+	m_texture_buffer_data[12+(2*offset)] = m_texture_buffer_data[18+(2*offset)] = m_texture_buffer_data[14+(2*offset)] = 224.0/420.0;
+ 	m_texture_buffer_data[13+(2*offset)] = m_texture_buffer_data[19+(2*offset)] = m_texture_buffer_data[21+(2*offset)] = 56.0/224.0;
+ 	m_texture_buffer_data[20+(2*offset)] = m_texture_buffer_data[16+(2*offset)] = m_texture_buffer_data[22+(2*offset)] = 252.0/420.0;
+	m_texture_buffer_data[15+(2*offset)] = m_texture_buffer_data[17+(2*offset)] = m_texture_buffer_data[23+(2*offset)] = 140.0/224.0;
+
+ 	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
+}
+
 void Player::moveForward()
 {
 	m_x += 0.1;
+	if(m_type == 4 || m_type == 5 || m_type == 3 || m_type == 6)
+	{
+		m_rotation += m_rotationincrement;
+		if(m_rotation > 30.0f)
+		{
+			m_rotationincrement *= -1;
+			m_rotation = 30.0f;
+		}
+		else if(m_rotation < -30.0f)
+		{
+			m_rotationincrement *= -1;
+			m_rotation = -30.0f;
+		}
+	}
 }
 
 void Player::moveBackward()
 {
 	m_x -= 0.1;
+	if(m_type == 4 || m_type == 5 || m_type == 3 || m_type == 6)
+	{
+		m_rotation += m_rotationincrement;
+		if(m_rotation > 30.0f)
+		{
+			m_rotationincrement *= -1;
+			m_rotation = 30.0f;
+		}
+		else if(m_rotation < -30.0f)
+		{
+			m_rotationincrement *= -1;
+			m_rotation = -30.0f;
+		}
+	}
 }
 
 void Player::moveLeft()
 {
 	m_z -= 0.1;
+	if(m_type == 4 || m_type == 5 || m_type == 3 || m_type == 6)
+	{
+		m_rotation += m_rotationincrement;
+		if(m_rotation > 30.0f)
+		{
+			m_rotationincrement *= -1;
+			m_rotation = 30.0f;
+		}
+		else if(m_rotation < -30.0f)
+		{
+			m_rotationincrement *= -1;
+			m_rotation = -30.0f;
+		}
+	}
 }
 
 void Player::moveRight()
 {
 	m_z += 0.1;
+	if(m_type == 4 || m_type == 5 || m_type == 3 || m_type == 6)
+	{
+		m_rotation += m_rotationincrement;
+		if(m_rotation > 30.0f)
+		{
+			m_rotationincrement *= -1;
+			m_rotation = 30.0f;
+		}
+		else if(m_rotation < -30.0f)
+		{
+			m_rotationincrement *= -1;
+			m_rotation = -30.0f;
+		}
+	}
 }
 
 // Cuboid c(0, 0, 0, 5, 5, 5);
 vector<Cuboid *> field;
 vector<Cuboid *> water;
-Player *playerHead, *playerBody, *playerLegs;
+Player *playerHead, *playerBody, *playerLeftLeg, *playerRightLeg, *playerLeftHand, *playerRightHand;
 
-void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlayer)
+void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlayer, GLuint TextureLava)
 {
 	for(int i = 0; i < 50; i++)
 	{
@@ -1035,10 +1187,16 @@ void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlaye
 
 	playerHead = new Player(0, 3, 0, 0.56, 0.56, 0.56);
 	playerHead->createPlayer(TexturePlayer, 1);
-	playerBody = new Player(0, 2.44, 0.28, 1.12, 0.56, 1.12);
+	playerBody = new Player(0.14, 2.44, 0, 1.12, 0.28, 0.56);
 	playerBody->createPlayer(TexturePlayer, 2);
-	playerLegs = new Player(0, 1.32, 0, 1.12, 0.56, 0.56);
-	playerLegs->createPlayer(TexturePlayer, 3);
+	playerRightLeg = new Player(0.14, 1.42, 0, 1.22, 0.28, 0.28);
+	playerRightLeg->createPlayer(TexturePlayer, 6);
+	playerLeftLeg = new Player(0.14, 1.42, -0.28, 1.22, 0.28, 0.28);
+	playerLeftLeg->createPlayer(TexturePlayer, 3);
+	playerLeftHand = new Player(0.14, 2.44, 0.28, 1.12, 0.28, 0.28);
+	playerLeftHand->createPlayer(TexturePlayer, 4);
+	playerRightHand = new Player(0.14, 2.44, -0.56, 1.12, 0.28, 0.28);
+	playerRightHand->createPlayer(TexturePlayer, 5);
 }
 
 void drawWorld()
@@ -1053,35 +1211,87 @@ void drawWorld()
 	}
 	playerHead->draw();
 	playerBody->draw();
-	playerLegs->draw();
+	playerLeftLeg->draw();
+	playerRightLeg->draw();
+	playerRightHand->draw();
+	playerLeftHand->draw();
 }
 
 void moveForward()
 {
 	playerHead->moveForward();
 	playerBody->moveForward();
-	playerLegs->moveForward();
+	playerLeftLeg->moveForward();
+	playerRightLeg->moveForward();
+	playerRightHand->moveForward();
+	playerLeftHand->moveForward();
+
 }
 
 void moveBackward()
 {
 	playerHead->moveBackward();
 	playerBody->moveBackward();
-	playerLegs->moveBackward();
+	playerRightLeg->moveBackward();
+	playerLeftLeg->moveBackward();
+	playerRightHand->moveBackward();
+	playerLeftHand->moveBackward();
+
 }
 
 void moveLeft()
 {
 	playerHead->moveLeft();
 	playerBody->moveLeft();
-	playerLegs->moveLeft();
+	playerLeftLeg->moveLeft();
+	playerRightLeg->moveLeft();
+	playerRightHand->moveLeft();
+	playerLeftHand->moveLeft();
+
 }
 
 void moveRight()
 {
 	playerHead->moveRight();
 	playerBody->moveRight();
-	playerLegs->moveRight();
+	playerLeftLeg->moveRight();
+	playerRightLeg->moveRight();
+	playerRightHand->moveRight();
+	playerLeftHand->moveRight();
+
+}
+
+void cameraChange()
+{
+	if(defaultCam == 1)
+	{
+		// Eye - Location of camera. Don't change unless you are sure!!
+		glm::vec3 eye ( playerHead->getX() + 5*cos(camera_rotation_angle*M_PI/180.0f), playerHead->getY() + 2, playerHead->getZ() + 5*sin(camera_rotation_angle*M_PI/180.0f) );
+		// Target - Where is the camera looking at.  Don't change unless you are sure!!
+		glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ());
+
+		// Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
+		glm::vec3 up (0, 1, 0);
+
+		// Compute Camera matrix (view)
+		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
+		camera_rotation_angle -= 0.1; // Simulating camera rotation
+	}
+	else if(defaultCam == 2)
+	{
+		// Eye - Location of camera. Don't change unless you are sure!!
+		glm::vec3 eye ( -1.5 + playerHead->getX(), 1 + playerHead->getY(), 0 + playerHead->getZ());
+		// Target - Where is the camera looking at.  Don't change unless you are sure!!
+		glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ());
+
+		// Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
+		glm::vec3 up (0, 1, 0);
+
+		// Compute Camera matrix (view)
+		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
+		camera_rotation_angle -= 0.1; // Simulating camera rotation
+	}
+
 }
 
 /* Executed when a regular key is pressed/released/held-down */
@@ -1101,18 +1311,6 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
             case GLFW_KEY_X:
                 // do something ..
                 break;
-            case GLFW_KEY_W:
-    			moveForward();
-    			break;
-    		case GLFW_KEY_A:
-    			moveLeft();
-    			break;
-    		case GLFW_KEY_S:
-    			moveBackward();
-    			break;
-    		case GLFW_KEY_D:
-    			moveRight();
-    			break;
             default:
                 break;
         }
@@ -1122,6 +1320,11 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
             case GLFW_KEY_ESCAPE:
                 quit(window);
                 break;
+            case GLFW_KEY_1:
+            	defaultCam = 1;
+            	break;
+            case GLFW_KEY_2:
+            	defaultCam = 2;
             default:
                 break;
         }
@@ -1130,18 +1333,7 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
     {
     	switch(key)
     	{
-    		case GLFW_KEY_W:
-    			moveForward();
-    			break;
-    		case GLFW_KEY_A:
-    			moveLeft();
-    			break;
-    		case GLFW_KEY_S:
-    			moveBackward();
-    			break;
-    		case GLFW_KEY_D:
-    			moveRight();
-    			break;
+
     	}
     }
 }
@@ -1177,11 +1369,25 @@ void mouseButton (GLFWwindow* window, int button, int action, int mods)
     }
 }
 
+GLFWwindow* window; // window desciptor/handle
+
+
+void PollKeys()
+{
+	if(glfwGetKey(window, GLFW_KEY_UP))
+		moveForward();
+	if(glfwGetKey(window, GLFW_KEY_DOWN))
+		moveBackward();
+	if(glfwGetKey(window, GLFW_KEY_LEFT))
+		moveLeft();
+	if(glfwGetKey(window, GLFW_KEY_RIGHT))
+		moveRight();
+}
+
 /* Initialise glfw window, I/O callbacks and the renderer to use */
 /* Nothing to Edit here */
 GLFWwindow* initGLFW (int width, int height)
 {
-    GLFWwindow* window; // window desciptor/handle
 
     glfwSetErrorCallback(error_callback);
     if (!glfwInit()) {
@@ -1234,13 +1440,18 @@ void initGL (GLFWwindow* window, int width, int height)
 	glActiveTexture(GL_TEXTURE0);
     /* Objects should be created before any other gl function and shaders */
 	// Create the models
-	// createTriangle (); // Generate the VAO, VBOs, vertices data & copy into the array buffer
-	// createRectangle ();
-	// createCube();
+	
 
 	// load an image file directly as a new OpenGL texture
 	// GLuint texID = SOIL_load_OGL_texture ("beach.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_TEXTURE_REPEATS); // Buggy for OpenGL3
 	GLuint textureGrass = createTexture("grass.png");
+	// check for an error during the load process
+	if(textureGrass == 0 )
+		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
+
+	// load an image file directly as a new OpenGL texture
+	// GLuint texID = SOIL_load_OGL_texture ("beach.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_TEXTURE_REPEATS); // Buggy for OpenGL3
+	GLuint textureLava = createTexture("lava2.png");
 	// check for an error during the load process
 	if(textureGrass == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
@@ -1265,7 +1476,7 @@ void initGL (GLFWwindow* window, int width, int height)
 	/* Objects should be created before any other gl function and shaders */
 	// Create the models
 	// c.createCuboid(textureGrass, 1);
-	initWorld(textureGrass, textureWater, texturePlayer);
+	initWorld(textureGrass, textureWater, texturePlayer, textureLava);
 	
 	// Create and compile our GLSL program from the shaders
 	programID = LoadShaders( "Sample_GL.vert", "Sample_GL.frag" );
@@ -1299,18 +1510,7 @@ void draw ()
   //glUseProgram (programID);
     glUseProgram(textureProgramID);
 
-  // Eye - Location of camera. Don't change unless you are sure!!
-  glm::vec3 eye ( 5*cos(camera_rotation_angle*M_PI/180.0f), 5, 5*sin(camera_rotation_angle*M_PI/180.0f) );
-  // glm::vec3 eye ( -1.5 + playerHead->getX(), 2 + playerHead->getY(), 0 + playerHead->getZ());
-  // Target - Where is the camera looking at.  Don't change unless you are sure!!
-  glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ());
-  // Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
-  glm::vec3 up (0, 1, 0);
-
-  // Compute Camera matrix (view)
-  Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
-  //  Don't change unless you are sure!!
-  //Matrices.view = glm::lookAt(glm::vec3(0,0,3), glm::vec3(0,0,0), glm::vec3(0,1,0)); // Fixed camera for 2D (ortho) in XY plane
+  	cameraChange();
 
   // Compute ViewProject matrix as view/camera might not be changed for this frame (basic scenario)
   //  Don't change unless you are sure!!
@@ -1341,14 +1541,6 @@ void draw ()
   //cb->draw();
   drawWorld();
 
-
-
-  // Increment angles
-  float increments = 1;
-
-  camera_rotation_angle += 0.1; // Simulating camera rotation
-  triangle_rotation = triangle_rotation + increments*triangle_rot_dir*triangle_rot_status;
-  rectangle_rotation = rectangle_rotation + increments*rectangle_rot_dir*rectangle_rot_status;
 }
 
 int main (int argc, char** argv)
@@ -1371,6 +1563,8 @@ int main (int argc, char** argv)
 
         // Swap Frame Buffer in double buffering
         glfwSwapBuffers(window);
+
+        PollKeys();
 
         // Poll for Keyboard and mouse events
         glfwPollEvents();
