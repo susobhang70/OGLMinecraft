@@ -338,69 +338,6 @@ float rectangle_rot_dir = 1;
 bool triangle_rot_status = true;
 bool rectangle_rot_status = true;
 
-/* Executed when a regular key is pressed/released/held-down */
-/* Prefered for Keyboard events */
-void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-     // Function is called first on GLFW_PRESS.
-
-    if (action == GLFW_RELEASE) {
-        switch (key) {
-            case GLFW_KEY_C:
-                rectangle_rot_status = !rectangle_rot_status;
-                break;
-            case GLFW_KEY_P:
-                triangle_rot_status = !triangle_rot_status;
-                break;
-            case GLFW_KEY_X:
-                // do something ..
-                break;
-            default:
-                break;
-        }
-    }
-    else if (action == GLFW_PRESS) {
-        switch (key) {
-            case GLFW_KEY_ESCAPE:
-                quit(window);
-                break;
-            default:
-                break;
-        }
-    }
-}
-
-/* Executed for character input (like in text boxes) */
-void keyboardChar (GLFWwindow* window, unsigned int key)
-{
-	switch (key) {
-		case 'Q':
-		case 'q':
-            quit(window);
-            break;
-		default:
-			break;
-	}
-}
-
-/* Executed when a mouse button is pressed/released */
-void mouseButton (GLFWwindow* window, int button, int action, int mods)
-{
-    switch (button) {
-        case GLFW_MOUSE_BUTTON_LEFT:
-            if (action == GLFW_RELEASE)
-                triangle_rot_dir *= -1;
-            break;
-        case GLFW_MOUSE_BUTTON_RIGHT:
-            if (action == GLFW_RELEASE) {
-                rectangle_rot_dir *= -1;
-            }
-            break;
-        default:
-            break;
-    }
-}
-
 
 /* Executed when window is resized to 'width' and 'height' */
 /* Modify the bounds of the screen here in glm::ortho or Field of View in glm::Perspective */
@@ -482,7 +419,7 @@ void createRectangle ()
 
 class Cuboid
 {
-	private:
+	protected:
 		float m_x, m_y, m_z;
 		float m_height, m_width, m_length;
 		GLfloat m_vertex_buffer_data[12*3*3];
@@ -498,6 +435,9 @@ class Cuboid
 		void draw();
 		void grassBlock();
 		void waterBlock();
+		float getX() { return m_x; }
+		float getY() { return m_y; }
+		float getZ() { return m_z; }
 };
 
 Cuboid::Cuboid(float x, float y, float z, float length, float width, float height)
@@ -903,6 +843,193 @@ void Cuboid::draw ()
   // rectangle_rotation = rectangle_rotation + increments*rectangle_rot_dir*rectangle_rot_status;
 }
 
+class Player : public Cuboid
+{
+
+	public:
+		Player(float x, float y, float z, float length, float width, float height);
+		Player(Player &p);
+		void createPlayer(GLuint texturePlayer);
+		void moveForward();
+		void moveBackward();
+		void moveLeft();
+		void moveRight();
+};
+
+Player::Player(float x, float y, float z, float length, float width, float height): Cuboid(x, y, z, length, width, height)
+{
+
+}
+
+Player::Player(Player &p): Cuboid(p)
+{
+
+}
+
+void Player::createPlayer(GLuint texturePlayer)
+{
+	createCuboid(texturePlayer, 2);
+	return;
+}
+
+void Player::moveForward()
+{
+	m_x += 0.1;
+}
+
+void Player::moveBackward()
+{
+	m_x -= 0.1;
+}
+
+void Player::moveLeft()
+{
+	m_z -= 0.1;
+}
+
+void Player::moveRight()
+{
+	m_z += 0.1;
+}
+
+// Cuboid c(0, 0, 0, 5, 5, 5);
+vector<Cuboid *> field;
+vector<Cuboid *> water;
+Player *player;
+
+void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlayer)
+{
+	for(int i = 0; i < 50; i++)
+	{
+		for(int j = 0; j < 50; j++)
+		{
+			Cuboid *temp = new Cuboid(40-i, -1, 40-j, 1, 1, 1);
+			temp->createCuboid(TextureIDWater, 2);
+			water.push_back(temp);
+		}
+	}
+
+	for(int i = 0; i < 30; i++)
+	{
+		for(int j = 0; j < 30; j++)
+		{
+			Cuboid *temp = new Cuboid(i, 0, j, 1, 1, 1);
+			temp->createCuboid(TextureIDGrass, 1);
+			field.push_back(temp);
+
+		}
+	}
+
+	player = new Player(0, 1, 0, 1, 1, 1);
+	player->createPlayer(TexturePlayer);
+}
+
+void drawWorld()
+{
+	for(vector<Cuboid *>::iterator it = water.begin(); it != water.end(); ++it)
+	{
+		(*it)->draw();
+	}
+	for(vector<Cuboid *>::iterator it = field.begin(); it != field.end(); ++it)
+	{
+		(*it)->draw();
+	}
+	player->draw();
+}
+
+/* Executed when a regular key is pressed/released/held-down */
+/* Prefered for Keyboard events */
+void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+     // Function is called first on GLFW_PRESS.
+
+    if (action == GLFW_RELEASE) {
+        switch (key) {
+            case GLFW_KEY_C:
+                rectangle_rot_status = !rectangle_rot_status;
+                break;
+            case GLFW_KEY_P:
+                triangle_rot_status = !triangle_rot_status;
+                break;
+            case GLFW_KEY_X:
+                // do something ..
+                break;
+            case GLFW_KEY_W:
+    			player->moveForward();
+    			break;
+    		case GLFW_KEY_A:
+    			player->moveLeft();
+    			break;
+    		case GLFW_KEY_S:
+    			player->moveBackward();
+    			break;
+    		case GLFW_KEY_D:
+    			player->moveRight();
+    			break;
+            default:
+                break;
+        }
+    }
+    else if (action == GLFW_PRESS) {
+        switch (key) {
+            case GLFW_KEY_ESCAPE:
+                quit(window);
+                break;
+            default:
+                break;
+        }
+    }
+    else if (action == GLFW_REPEAT)
+    {
+    	switch(key)
+    	{
+    		case GLFW_KEY_W:
+    			player->moveForward();
+    			break;
+    		case GLFW_KEY_A:
+    			player->moveLeft();
+    			break;
+    		case GLFW_KEY_S:
+    			player->moveBackward();
+    			break;
+    		case GLFW_KEY_D:
+    			player->moveRight();
+    			break;
+    	}
+    }
+}
+
+/* Executed for character input (like in text boxes) */
+void keyboardChar (GLFWwindow* window, unsigned int key)
+{
+	switch (key) {
+		case 'Q':
+		case 'q':
+            quit(window);
+            break;
+		default:
+			break;
+	}
+}
+
+/* Executed when a mouse button is pressed/released */
+void mouseButton (GLFWwindow* window, int button, int action, int mods)
+{
+    switch (button) {
+        case GLFW_MOUSE_BUTTON_LEFT:
+            if (action == GLFW_RELEASE)
+                triangle_rot_dir *= -1;
+            break;
+        case GLFW_MOUSE_BUTTON_RIGHT:
+            if (action == GLFW_RELEASE) {
+                rectangle_rot_dir *= -1;
+            }
+            break;
+        default:
+            break;
+    }
+}
+
 /* Initialise glfw window, I/O callbacks and the renderer to use */
 /* Nothing to Edit here */
 GLFWwindow* initGLFW (int width, int height)
@@ -951,46 +1078,6 @@ GLFWwindow* initGLFW (int width, int height)
     return window;
 }
 
-// Cuboid c(0, 0, 0, 5, 5, 5);
-vector<Cuboid *> field;
-vector<Cuboid *> water;
-
-void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater)
-{
-	for(int i = 0; i < 50; i++)
-	{
-		for(int j = 0; j < 50; j++)
-		{
-			Cuboid *temp = new Cuboid(40-i, -1, 40-j, 1, 1, 1);
-			temp->createCuboid(TextureIDWater, 2);
-			water.push_back(temp);
-		}
-	}
-
-	for(int i = 0; i < 30; i++)
-	{
-		for(int j = 0; j < 30; j++)
-		{
-			Cuboid *temp = new Cuboid(i, 0, j, 1, 1, 1);
-			temp->createCuboid(TextureIDGrass, 1);
-			field.push_back(temp);
-
-		}
-	}
-}
-
-void drawWorld()
-{
-	for(vector<Cuboid *>::iterator it = water.begin(); it != water.end(); ++it)
-	{
-		(*it)->draw();
-	}
-	for(vector<Cuboid *>::iterator it = field.begin(); it != field.end(); ++it)
-	{
-		(*it)->draw();
-	}
-}
-
 /* Initialize the OpenGL rendering properties */
 /* Add all the models to be created here */
 void initGL (GLFWwindow* window, int width, int height)
@@ -1018,6 +1105,11 @@ void initGL (GLFWwindow* window, int width, int height)
 	if(textureWater == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
+	GLuint texturePlayer = createTexture("skin.png");
+	// check for an error during the load process
+	if(textureWater == 0 )
+		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
+
 	// Create and compile our GLSL program from the texture shaders
 	textureProgramID = LoadShaders( "TextureRender.vert", "TextureRender.frag" );
 	// Get a handle for our "MVP" uniform
@@ -1026,7 +1118,7 @@ void initGL (GLFWwindow* window, int width, int height)
 	/* Objects should be created before any other gl function and shaders */
 	// Create the models
 	// c.createCuboid(textureGrass, 1);
-	initWorld(textureGrass, textureWater);
+	initWorld(textureGrass, textureWater, texturePlayer);
 	
 	// Create and compile our GLSL program from the shaders
 	programID = LoadShaders( "Sample_GL.vert", "Sample_GL.frag" );
@@ -1061,10 +1153,10 @@ void draw ()
     glUseProgram(textureProgramID);
 
   // Eye - Location of camera. Don't change unless you are sure!!
-  glm::vec3 eye ( 5*cos(camera_rotation_angle*M_PI/180.0f), 10, 5*sin(camera_rotation_angle*M_PI/180.0f) );
-  // glm::vec3 eye ( -2, 4, -1);
+  // glm::vec3 eye ( 5*cos(camera_rotation_angle*M_PI/180.0f), 10, 5*sin(camera_rotation_angle*M_PI/180.0f) );
+  glm::vec3 eye ( -1.5 + player->getX(), 3 + player->getY(), 0 + player->getZ());
   // Target - Where is the camera looking at.  Don't change unless you are sure!!
-  glm::vec3 target (0, 0, 0);
+  glm::vec3 target (player->getX(), player->getY(), player->getZ());
   // Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
   glm::vec3 up (0, 1, 0);
 
