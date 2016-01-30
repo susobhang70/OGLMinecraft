@@ -851,12 +851,14 @@ class Player : public Cuboid
 	public:
 		Player(float x, float y, float z, float length, float width, float height);
 		Player(Player &p);
-		void createPlayer(GLuint texturePlayer);
+		void createPlayer(GLuint texturePlayer, int part);
 		void moveForward();
 		void moveBackward();
 		void moveLeft();
 		void moveRight();
 		void playerHeadBlock();
+		void playerBodyBlock();
+		void playerLegBlock();
 };
 
 Player::Player(float x, float y, float z, float length, float width, float height): Cuboid(x, y, z, length, width, height)
@@ -869,10 +871,13 @@ Player::Player(Player &p): Cuboid(p)
 
 }
 
-void Player::createPlayer(GLuint texturePlayer)
+void Player::createPlayer(GLuint texturePlayer, int part)
 {
 	createCuboid(texturePlayer, 3);
-	playerHeadBlock();
+	if(part == 1)
+		playerHeadBlock();
+	else if(part == 2)
+		playerBodyBlock();
 	return;
 }
 
@@ -880,18 +885,102 @@ void Player::playerHeadBlock()
 {
 	for(int v = 0; v < 36; v++)
 	{
-		m_texture_buffer_data[2*v + 0] = 1;
-		m_texture_buffer_data[2*v + 1] = 1;
+		m_texture_buffer_data[2*v + 0] = 44.0/420.0;
+		m_texture_buffer_data[2*v + 1] = 4.0/224.0;
 	}
+
+	int offset = 12;
 
  	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 28.0/420.0;
  	m_texture_buffer_data[13] = m_texture_buffer_data[19] = m_texture_buffer_data[21] = 0;
  	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 84.0/420.0;
 	m_texture_buffer_data[15] = m_texture_buffer_data[17] = m_texture_buffer_data[23] = 56.0/224.0;
 
+	m_texture_buffer_data[12+offset] = m_texture_buffer_data[18+offset] = m_texture_buffer_data[14+offset] = 364.0/420.0;
+ 	m_texture_buffer_data[13+offset] = m_texture_buffer_data[19+offset] = m_texture_buffer_data[21+offset] = 0;
+ 	m_texture_buffer_data[20+offset] = m_texture_buffer_data[16+offset] = m_texture_buffer_data[22+offset] = 420.0/420.0;
+	m_texture_buffer_data[15+offset] = m_texture_buffer_data[17+offset] = m_texture_buffer_data[23+offset] = 56.0/224.0;
+
+	m_texture_buffer_data[12-offset] = m_texture_buffer_data[18-offset] = m_texture_buffer_data[14-offset] = 140.0/420.0;
+ 	m_texture_buffer_data[13-offset] = m_texture_buffer_data[19-offset] = m_texture_buffer_data[21-offset] = 0;
+ 	m_texture_buffer_data[20-offset] = m_texture_buffer_data[16-offset] = m_texture_buffer_data[22-offset] = 196.0/420.0;
+	m_texture_buffer_data[15-offset] = m_texture_buffer_data[17-offset] = m_texture_buffer_data[23-offset] = 56.0/224.0;
+
+	m_texture_buffer_data[12+(2*offset)] = m_texture_buffer_data[18+(2*offset)] = m_texture_buffer_data[14+(2*offset)] = 252.0/420.0;
+ 	m_texture_buffer_data[13+(2*offset)] = m_texture_buffer_data[19+(2*offset)] = m_texture_buffer_data[21+(2*offset)] = 0;
+ 	m_texture_buffer_data[20+(2*offset)] = m_texture_buffer_data[16+(2*offset)] = m_texture_buffer_data[22+(2*offset)] = 308.0/420.0;
+	m_texture_buffer_data[15+(2*offset)] = m_texture_buffer_data[17+(2*offset)] = m_texture_buffer_data[23+(2*offset)] = 56.0/224.0;
+
  	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
 
 	return;
+}
+
+void Player::playerBodyBlock()
+{
+	for(int v = 0; v < 36; v++)
+	{
+		m_texture_buffer_data[2*v + 0] = 0;
+		m_texture_buffer_data[2*v + 1] = 0;
+	}
+
+	int offset = 12;
+
+ 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 28.0/420.0;
+ 	m_texture_buffer_data[13] = m_texture_buffer_data[19] = m_texture_buffer_data[21] = 56.0/224.0;
+ 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 84.0/420.0;
+	m_texture_buffer_data[15] = m_texture_buffer_data[17] = m_texture_buffer_data[23] = 140.0/224.0;
+
+	m_texture_buffer_data[12+offset] = m_texture_buffer_data[18+offset] = m_texture_buffer_data[14+offset] = 378.0/420.0;
+ 	m_texture_buffer_data[13+offset] = m_texture_buffer_data[19+offset] = m_texture_buffer_data[21+offset] = 56.0/224.0;
+ 	m_texture_buffer_data[20+offset] = m_texture_buffer_data[16+offset] = m_texture_buffer_data[22+offset] = 406.0/420.0;
+	m_texture_buffer_data[15+offset] = m_texture_buffer_data[17+offset] = m_texture_buffer_data[23+offset] = 140.0/224.0;
+
+	m_texture_buffer_data[12-offset] = m_texture_buffer_data[18-offset] = m_texture_buffer_data[14-offset] = 154.0/420.0;
+ 	m_texture_buffer_data[13-offset] = m_texture_buffer_data[19-offset] = m_texture_buffer_data[21-offset] = 56.0/224.0;
+ 	m_texture_buffer_data[20-offset] = m_texture_buffer_data[16-offset] = m_texture_buffer_data[22-offset] = 182.0/420.0;
+	m_texture_buffer_data[15-offset] = m_texture_buffer_data[17-offset] = m_texture_buffer_data[23-offset] = 140.0/224.0;
+
+	m_texture_buffer_data[12+(2*offset)] = m_texture_buffer_data[18+(2*offset)] = m_texture_buffer_data[14+(2*offset)] = 224.0/420.0;
+ 	m_texture_buffer_data[13+(2*offset)] = m_texture_buffer_data[19+(2*offset)] = m_texture_buffer_data[21+(2*offset)] = 56.0/224.0;
+ 	m_texture_buffer_data[20+(2*offset)] = m_texture_buffer_data[16+(2*offset)] = m_texture_buffer_data[22+(2*offset)] = 336.0/420.0;
+	m_texture_buffer_data[15+(2*offset)] = m_texture_buffer_data[17+(2*offset)] = m_texture_buffer_data[23+(2*offset)] = 140.0/224.0;
+
+ 	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
+
+}
+
+void Player::playerLegBlock()
+{
+	for(int v = 0; v < 36; v++)
+	{
+		m_texture_buffer_data[2*v + 0] = 0;
+		m_texture_buffer_data[2*v + 1] = 0;
+	}
+
+	int offset = 12;
+
+ 	m_texture_buffer_data[12] = m_texture_buffer_data[18] = m_texture_buffer_data[14] = 0.0/420.0;
+ 	m_texture_buffer_data[13] = m_texture_buffer_data[19] = m_texture_buffer_data[21] = 140.0/224.0;
+ 	m_texture_buffer_data[20] = m_texture_buffer_data[16] = m_texture_buffer_data[22] = 112.0/420.0;
+	m_texture_buffer_data[15] = m_texture_buffer_data[17] = m_texture_buffer_data[23] = 224.0/224.0;
+
+	m_texture_buffer_data[12+offset] = m_texture_buffer_data[18+offset] = m_texture_buffer_data[14+offset] = 364.0/420.0;
+ 	m_texture_buffer_data[13+offset] = m_texture_buffer_data[19+offset] = m_texture_buffer_data[21+offset] = 140.0/224.0;
+ 	m_texture_buffer_data[20+offset] = m_texture_buffer_data[16+offset] = m_texture_buffer_data[22+offset] = 420.0/420.0;
+	m_texture_buffer_data[15+offset] = m_texture_buffer_data[17+offset] = m_texture_buffer_data[23+offset] = 224.0/224.0;
+
+	m_texture_buffer_data[12-offset] = m_texture_buffer_data[18-offset] = m_texture_buffer_data[14-offset] = 140.0/420.0;
+ 	m_texture_buffer_data[13-offset] = m_texture_buffer_data[19-offset] = m_texture_buffer_data[21-offset] = 140.0/224.0;
+ 	m_texture_buffer_data[20-offset] = m_texture_buffer_data[16-offset] = m_texture_buffer_data[22-offset] = 196.0/420.0;
+	m_texture_buffer_data[15-offset] = m_texture_buffer_data[17-offset] = m_texture_buffer_data[23-offset] = 224.0/224.0;
+
+	m_texture_buffer_data[12+(2*offset)] = m_texture_buffer_data[18+(2*offset)] = m_texture_buffer_data[14+(2*offset)] = 252.0/420.0;
+ 	m_texture_buffer_data[13+(2*offset)] = m_texture_buffer_data[19+(2*offset)] = m_texture_buffer_data[21+(2*offset)] = 140.0/224.0;
+ 	m_texture_buffer_data[20+(2*offset)] = m_texture_buffer_data[16+(2*offset)] = m_texture_buffer_data[22+(2*offset)] = 308.0/420.0;
+	m_texture_buffer_data[15+(2*offset)] = m_texture_buffer_data[17+(2*offset)] = m_texture_buffer_data[23+(2*offset)] = 224.0/224.0;
+
+ 	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
 }
 
 void Player::moveForward()
@@ -917,7 +1006,7 @@ void Player::moveRight()
 // Cuboid c(0, 0, 0, 5, 5, 5);
 vector<Cuboid *> field;
 vector<Cuboid *> water;
-Player *player;
+Player *playerHead, *playerBody;
 
 void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlayer)
 {
@@ -942,8 +1031,10 @@ void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlaye
 		}
 	}
 
-	player = new Player(0, 1, 0, 1, 1, 1);
-	player->createPlayer(TexturePlayer);
+	playerHead = new Player(0, 3, 0, 0.56, 0.56, 0.56);
+	playerHead->createPlayer(TexturePlayer, 1);
+	playerBody = new Player(0, 2.44, 0.28, 1.12, 0.56, 1.12);
+	playerBody->createPlayer(TexturePlayer, 2);
 }
 
 void drawWorld()
@@ -956,7 +1047,32 @@ void drawWorld()
 	{
 		(*it)->draw();
 	}
-	player->draw();
+	playerHead->draw();
+	playerBody->draw();
+}
+
+void moveForward()
+{
+	playerHead->moveForward();
+	playerBody->moveForward();
+}
+
+void moveBackward()
+{
+	playerHead->moveBackward();
+	playerBody->moveBackward();
+}
+
+void moveLeft()
+{
+	playerHead->moveLeft();
+	playerBody->moveLeft();
+}
+
+void moveRight()
+{
+	playerHead->moveRight();
+	playerBody->moveRight();
 }
 
 /* Executed when a regular key is pressed/released/held-down */
@@ -977,16 +1093,16 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
                 // do something ..
                 break;
             case GLFW_KEY_W:
-    			player->moveForward();
+    			moveForward();
     			break;
     		case GLFW_KEY_A:
-    			player->moveLeft();
+    			moveLeft();
     			break;
     		case GLFW_KEY_S:
-    			player->moveBackward();
+    			moveBackward();
     			break;
     		case GLFW_KEY_D:
-    			player->moveRight();
+    			moveRight();
     			break;
             default:
                 break;
@@ -1006,16 +1122,16 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
     	switch(key)
     	{
     		case GLFW_KEY_W:
-    			player->moveForward();
+    			moveForward();
     			break;
     		case GLFW_KEY_A:
-    			player->moveLeft();
+    			moveLeft();
     			break;
     		case GLFW_KEY_S:
-    			player->moveBackward();
+    			moveBackward();
     			break;
     		case GLFW_KEY_D:
-    			player->moveRight();
+    			moveRight();
     			break;
     	}
     }
@@ -1175,10 +1291,10 @@ void draw ()
     glUseProgram(textureProgramID);
 
   // Eye - Location of camera. Don't change unless you are sure!!
-  glm::vec3 eye ( 5*cos(camera_rotation_angle*M_PI/180.0f), 5, 5*sin(camera_rotation_angle*M_PI/180.0f) );
-  // glm::vec3 eye ( -0.5 + player->getX(), 3 + player->getY(), 0 + player->getZ());
+  // glm::vec3 eye ( 5*cos(camera_rotation_angle*M_PI/180.0f), 5, 5*sin(camera_rotation_angle*M_PI/180.0f) );
+  glm::vec3 eye ( -1.5 + playerHead->getX(), 2 + playerHead->getY(), 0 + playerHead->getZ());
   // Target - Where is the camera looking at.  Don't change unless you are sure!!
-  glm::vec3 target (player->getX(), player->getY(), player->getZ());
+  glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ());
   // Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
   glm::vec3 up (0, 1, 0);
 
