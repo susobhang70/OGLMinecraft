@@ -1358,7 +1358,7 @@ void cameraChange()
 
 	else if(defaultCam == 4)
 	{
-		glm::vec3 eye ( 0, 15, 15);
+		glm::vec3 eye ( -5, 15, 15);
 		glm::vec3 target (15, 0, 15);
 		glm::vec3 up (0, 0.1, 0);
 		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
@@ -1528,22 +1528,22 @@ void initGL (GLFWwindow* window, int width, int height)
 	if(textureGrass == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	GLuint textureLava = createTexture("lava2.png");
+	GLuint textureLava = createTexture("lava.png");
 	// check for an error during the load process
 	if(textureLava == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	GLuint textureWater = createTexture("water2.png");
+	GLuint textureWater = createTexture("water.png");
 	// check for an error during the load process
 	if(textureWater == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	texturePlayer = createTexture("skin2.png");
+	texturePlayer = createTexture("skin.png");
 	// check for an error during the load process
 	if(texturePlayer == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	GLuint textureDirt = createTexture("dirt2.png");
+	GLuint textureDirt = createTexture("dirt.png");
 	// check for an error during the load process
 	if(textureDirt == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
