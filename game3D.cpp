@@ -2,6 +2,8 @@
 #include <cmath>
 #include <fstream>
 #include <vector>
+#include <algorithm>
+#include <cstdlib>
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -20,7 +22,8 @@
 
 using namespace std;
 
-int defaultCam = 1;
+int defaultCam = 2;
+int pits[895];
 
 struct VAO {
     GLuint VertexArrayID;
@@ -48,6 +51,25 @@ struct FTGLFont {
 	GLuint fontMatrixID;
 	GLuint fontColorID;
 } GL3Font;
+
+int compare (const void * a, const void * b)
+{
+  return ( *(int*)a - *(int*)b );
+}
+
+void findLavaBlocks()
+{
+	for(int i = 0; i < 895; i++)
+		pits[i] = i+4;
+
+	random_shuffle(&pits[0], &pits[895]);
+
+	qsort(pits, 100, sizeof(int), compare);
+
+	// for(int i = 0; i < 100; i++)
+	// 	cout<<pits[i]<<endl;
+
+}
 
 GLuint programID, textureProgramID;
 
@@ -432,6 +454,7 @@ class Cuboid
 		GLfloat m_texture_buffer_data[12*3*2];
 		VAO *m_cuboid;
 		GLuint m_textureID;
+		int m_blocktype;
 
 	public:
 		Cuboid(float x, float y, float z, float length, float width, float height);
@@ -443,6 +466,7 @@ class Cuboid
 		float getX() { return m_x; }
 		float getY() { return m_y; }
 		float getZ() { return m_z; }
+		int getBlockType() { return m_blocktype; }
 };
 
 Cuboid::Cuboid(float x, float y, float z, float length, float width, float height)
@@ -473,6 +497,7 @@ Cuboid::Cuboid(Cuboid &c)
 void Cuboid::createCuboid(GLuint textureID, int blocktype)
 {
 	m_textureID = textureID;
+	m_blocktype = blocktype;
 
 	// Face 1 traingle 1
 	m_vertex_buffer_data[0] = 0;
@@ -642,12 +667,12 @@ void Cuboid::createCuboid(GLuint textureID, int blocktype)
 	m_vertex_buffer_data[107] = -m_height;
 
 
-	if(blocktype == 1)
+	if(blocktype == 1 || blocktype == 4 || blocktype == 5)
 		grassBlock();
 	else if(blocktype == 2)
 		waterBlock();
 	else if(blocktype == 3)
-		return;
+		return; 
  	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
 }
 
@@ -826,9 +851,9 @@ void Cuboid::draw ()
 */
 
   Matrices.model = glm::mat4(1.0f);
-  glm::mat4 translateCube = glm::translate (glm::vec3(m_x, m_y, m_z));  
-  glm::mat4 rotateCube = glm::rotate((float)(m_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
-  Matrices.model *= (translateCube * rotateCube);
+  glm::mat4 translateCuboid = glm::translate (glm::vec3(m_x, m_y, m_z));  
+  glm::mat4 rotateCuboid = glm::rotate((float)(m_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
+  Matrices.model *= (translateCuboid * rotateCuboid);
   MVP = Matrices.projection * Matrices.view* Matrices.model;
 
   // glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
@@ -893,7 +918,7 @@ void Player::createPlayer(GLuint texturePlayer, int part)
 	else if(part == 3)
 	{
 		playerLegBlock();
-		m_rotationincrement = -5.0;
+		m_rotationincrement = 5.0;
 	}
 	else if(part == 4)
 	{
@@ -908,7 +933,7 @@ void Player::createPlayer(GLuint texturePlayer, int part)
 	else if(part == 6)
 	{
 		playerLegBlock();
-		m_rotationincrement = 5.0;
+		m_rotationincrement = -5.0;
 	}
 	return;
 }
@@ -1162,29 +1187,8 @@ vector<Cuboid *> field;
 vector<Cuboid *> water;
 Player *playerHead, *playerBody, *playerLeftLeg, *playerRightLeg, *playerLeftHand, *playerRightHand;
 
-void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlayer, GLuint TextureLava)
+void initPlayer(GLuint TexturePlayer)
 {
-	for(int i = 0; i < 50; i++)
-	{
-		for(int j = 0; j < 50; j++)
-		{
-			Cuboid *temp = new Cuboid(40-i, -1, 40-j, 1, 1, 1);
-			temp->createCuboid(TextureIDWater, 2);
-			water.push_back(temp);
-		}
-	}
-
-	for(int i = 0; i < 30; i++)
-	{
-		for(int j = 0; j < 30; j++)
-		{
-			Cuboid *temp = new Cuboid(i, 0, j, 1, 1, 1);
-			temp->createCuboid(TextureIDGrass, 1);
-			field.push_back(temp);
-
-		}
-	}
-
 	playerHead = new Player(0, 3, 0, 0.56, 0.56, 0.56);
 	playerHead->createPlayer(TexturePlayer, 1);
 	playerBody = new Player(0.14, 2.44, 0, 1.12, 0.28, 0.56);
@@ -1197,6 +1201,53 @@ void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlaye
 	playerLeftHand->createPlayer(TexturePlayer, 4);
 	playerRightHand = new Player(0.14, 2.44, -0.56, 1.12, 0.28, 0.28);
 	playerRightHand->createPlayer(TexturePlayer, 5);
+}
+
+void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlayer, GLuint TextureIDLava, GLuint TextureIDDirt)
+{
+	findLavaBlocks();
+	for(int i = 0; i < 50; i++)
+	{
+		for(int j = 0; j < 50; j++)
+		{
+			if(i >= 11 && i <= 40 && j >= 11 && j <= 40)
+				continue;
+			Cuboid *temp = new Cuboid(40-i, -1, 40-j, 1, 1, 1);
+			temp->createCuboid(TextureIDWater, 2);
+			water.push_back(temp);
+		}
+	}
+
+	int k = 0, l = 1;
+
+	for(int i = 0; i < 30; i++)
+	{
+		for(int j = 0; j < 30; j++)
+		{
+			Cuboid *temp;
+			if(i * 30 + j == pits[k])
+			{
+				temp = new Cuboid(i, 0, j, 1, 1, 1);
+				temp->createCuboid(TextureIDLava, 4);
+				k += 2;
+			}
+			else if(i * 30 + j == pits[l])
+			{
+				temp = new Cuboid(i, -1, j, 1, 1, 1);
+				temp->createCuboid(TextureIDGrass, 1);
+				l += 2;
+			}
+			else
+			{
+				temp = new Cuboid(i, 0, j, 1, 1, 1);
+				temp->createCuboid(TextureIDGrass, 1);
+			}
+			field.push_back(temp);
+
+		}
+	}
+
+	initPlayer(TexturePlayer);
 }
 
 void drawWorld()
@@ -1275,21 +1326,37 @@ void cameraChange()
 
 		// Compute Camera matrix (view)
 		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
-		camera_rotation_angle -= 0.1; // Simulating camera rotation
+		camera_rotation_angle -= 0.3; // Simulating camera rotation
 	}
 	else if(defaultCam == 2)
 	{
 		// Eye - Location of camera. Don't change unless you are sure!!
-		glm::vec3 eye ( -1.5 + playerHead->getX(), 1 + playerHead->getY(), 0 + playerHead->getZ());
+		glm::vec3 eye ( -1.5 + playerHead->getX(), 2 + playerHead->getY(), playerHead->getZ() - 0.28);
 		// Target - Where is the camera looking at.  Don't change unless you are sure!!
-		glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ());
+		glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ()-0.28);
 
 		// Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
-		glm::vec3 up (0, 1, 0);
+		glm::vec3 up (0, 0.1, 0);
 
 		// Compute Camera matrix (view)
 		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
 		camera_rotation_angle -= 0.1; // Simulating camera rotation
+	}
+
+	else if(defaultCam == 3)
+	{
+		glm::vec3 eye ( 14, 15, 15);
+		glm::vec3 target (15, 0, 15);
+		glm::vec3 up (0, 0.1, 0);
+		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
+	}
+
+	else if(defaultCam == 4)
+	{
+		glm::vec3 eye ( 0, 15, 15);
+		glm::vec3 target (15, 0, 15);
+		glm::vec3 up (0, 0.1, 0);
+		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
 	}
 
 }
@@ -1325,6 +1392,13 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
             	break;
             case GLFW_KEY_2:
             	defaultCam = 2;
+            	break;
+            case GLFW_KEY_3:
+            	defaultCam = 3;
+            	break;
+            case GLFW_KEY_4:
+            	defaultCam = 4;
+            	break;	
             default:
                 break;
         }
@@ -1449,15 +1523,11 @@ void initGL (GLFWwindow* window, int width, int height)
 	if(textureGrass == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	// load an image file directly as a new OpenGL texture
-	// GLuint texID = SOIL_load_OGL_texture ("beach.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_TEXTURE_REPEATS); // Buggy for OpenGL3
 	GLuint textureLava = createTexture("lava2.png");
 	// check for an error during the load process
 	if(textureGrass == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	// load an image file directly as a new OpenGL texture
-	// GLuint texID = SOIL_load_OGL_texture ("beach.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_TEXTURE_REPEATS); // Buggy for OpenGL3
 	GLuint textureWater = createTexture("water2.png");
 	// check for an error during the load process
 	if(textureWater == 0 )
@@ -1468,6 +1538,11 @@ void initGL (GLFWwindow* window, int width, int height)
 	if(textureWater == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
+	GLuint textureDirt = createTexture("dirt2.png");
+	// check for an error during the load process
+	if(textureGrass == 0 )
+		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
+
 	// Create and compile our GLSL program from the texture shaders
 	textureProgramID = LoadShaders( "TextureRender.vert", "TextureRender.frag" );
 	// Get a handle for our "MVP" uniform
@@ -1476,7 +1551,7 @@ void initGL (GLFWwindow* window, int width, int height)
 	/* Objects should be created before any other gl function and shaders */
 	// Create the models
 	// c.createCuboid(textureGrass, 1);
-	initWorld(textureGrass, textureWater, texturePlayer, textureLava);
+	initWorld(textureGrass, textureWater, texturePlayer, textureLava, textureDirt);
 	
 	// Create and compile our GLSL program from the shaders
 	programID = LoadShaders( "Sample_GL.vert", "Sample_GL.frag" );
@@ -1530,9 +1605,9 @@ void draw ()
 
 /*
   Matrices.model = glm::mat4(1.0f);
-  glm::mat4 translateCube = glm::translate (glm::vec3(2, 0, 0));  
-  //glm::mat4 rotateCube = glm::rotate((float)(cube_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
-  Matrices.model *= (translateCube);
+  glm::mat4 translateCuboid = glm::translate (glm::vec3(2, 0, 0));  
+  //glm::mat4 rotateCuboid = glm::rotate((float)(cube_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
+  Matrices.model *= (translateCuboid);
   MVP = VP * Matrices.model;
   glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
   draw3DObject(cube);
@@ -1543,10 +1618,20 @@ void draw ()
 
 }
 
+void lavacheck()
+{
+	int k = 0;
+	// int cx = floor(playerBody->getX()), cz = floor(playerBody->getZ() + 0.56);
+	float cx = playerBody->getX(), cz = playerBody->getZ();
+	int cxx = floor(cx), czz = floor(cz);
+	cout<<cx<<" "<<cz<<endl;
+}
+
 int main (int argc, char** argv)
 {
 	int width = 1300;
 	int height = 700;
+	srand(time(0));
 
     GLFWwindow* window = initGLFW(width, height);
 
@@ -1559,7 +1644,9 @@ int main (int argc, char** argv)
 
         // OpenGL Draw commands
         draw();
+        // cout<<floor(playerHead->getX())<<endl;
         // c.draw();
+        lavacheck();
 
         // Swap Frame Buffer in double buffering
         glfwSwapBuffers(window);
