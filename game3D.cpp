@@ -1525,7 +1525,7 @@ void initGL (GLFWwindow* window, int width, int height)
 
 	GLuint textureLava = createTexture("lava2.png");
 	// check for an error during the load process
-	if(textureGrass == 0 )
+	if(textureLava == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
 	GLuint textureWater = createTexture("water2.png");
@@ -1535,12 +1535,12 @@ void initGL (GLFWwindow* window, int width, int height)
 
 	GLuint texturePlayer = createTexture("skin2.png");
 	// check for an error during the load process
-	if(textureWater == 0 )
+	if(texturePlayer == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
 	GLuint textureDirt = createTexture("dirt2.png");
 	// check for an error during the load process
-	if(textureGrass == 0 )
+	if(textureDirt == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
 	// Create and compile our GLSL program from the texture shaders
@@ -1622,9 +1622,17 @@ void lavacheck()
 {
 	int k = 0;
 	// int cx = floor(playerBody->getX()), cz = floor(playerBody->getZ() + 0.56);
-	float cx = playerBody->getX(), cz = playerBody->getZ();
+	float cx = playerBody->getX(), cz = playerBody->getZ() + 0.56;
+	float cx1 = playerBody->getX(), cz1 = playerBody->getZ() + 0.94;
 	int cxx = floor(cx), czz = floor(cz);
-	cout<<cx<<" "<<cz<<endl;
+	int cxx1 = floor(cx1), czz1 = floor(cz1);
+	int number = (cxx * 30) + czz;
+	int number1 = (cxx1 * 30) + czz1;
+	if(field[number]->getBlockType() == 4 || field[number1]->getBlockType() == 4)
+		cout<<"Yes"<<endl;
+	else
+		cout<<"No"<<endl;
+	// cout<<cx<<" "<<cz<<" "<<number<<endl;
 }
 
 int main (int argc, char** argv)
