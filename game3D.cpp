@@ -24,6 +24,7 @@ using namespace std;
 
 int defaultCam = 2;
 int pits[895];
+GLuint texturePlayer;
 
 struct VAO {
     GLuint VertexArrayID;
@@ -1185,25 +1186,29 @@ void Player::moveRight()
 // Cuboid c(0, 0, 0, 5, 5, 5);
 vector<Cuboid *> field;
 vector<Cuboid *> water;
-Player *playerHead, *playerBody, *playerLeftLeg, *playerRightLeg, *playerLeftHand, *playerRightHand;
+Player *playerHead = NULL, *playerBody, *playerLeftLeg, *playerRightLeg, *playerLeftHand, *playerRightHand;
 
-void initPlayer(GLuint TexturePlayer)
+void initPlayer()
 {
+	if(playerHead != NULL)
+	{
+		delete playerHead, playerBody, playerLeftHand, playerLeftLeg, playerRightHand, playerRightLeg;
+	}
 	playerHead = new Player(0, 3, 0, 0.56, 0.56, 0.56);
-	playerHead->createPlayer(TexturePlayer, 1);
+	playerHead->createPlayer(texturePlayer, 1);
 	playerBody = new Player(0.14, 2.44, 0, 1.12, 0.28, 0.56);
-	playerBody->createPlayer(TexturePlayer, 2);
+	playerBody->createPlayer(texturePlayer, 2);
 	playerRightLeg = new Player(0.14, 1.42, 0, 1.22, 0.28, 0.28);
-	playerRightLeg->createPlayer(TexturePlayer, 6);
+	playerRightLeg->createPlayer(texturePlayer, 6);
 	playerLeftLeg = new Player(0.14, 1.42, -0.28, 1.22, 0.28, 0.28);
-	playerLeftLeg->createPlayer(TexturePlayer, 3);
+	playerLeftLeg->createPlayer(texturePlayer, 3);
 	playerLeftHand = new Player(0.14, 2.44, 0.28, 1.12, 0.28, 0.28);
-	playerLeftHand->createPlayer(TexturePlayer, 4);
+	playerLeftHand->createPlayer(texturePlayer, 4);
 	playerRightHand = new Player(0.14, 2.44, -0.56, 1.12, 0.28, 0.28);
-	playerRightHand->createPlayer(TexturePlayer, 5);
+	playerRightHand->createPlayer(texturePlayer, 5);
 }
 
-void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlayer, GLuint TextureIDLava, GLuint TextureIDDirt)
+void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TextureIDLava, GLuint TextureIDDirt)
 {
 	findLavaBlocks();
 	for(int i = 0; i < 50; i++)
@@ -1247,7 +1252,7 @@ void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TexturePlaye
 		}
 	}
 
-	initPlayer(TexturePlayer);
+	initPlayer();
 }
 
 void drawWorld()
@@ -1533,7 +1538,7 @@ void initGL (GLFWwindow* window, int width, int height)
 	if(textureWater == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	GLuint texturePlayer = createTexture("skin2.png");
+	texturePlayer = createTexture("skin2.png");
 	// check for an error during the load process
 	if(texturePlayer == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
@@ -1551,7 +1556,7 @@ void initGL (GLFWwindow* window, int width, int height)
 	/* Objects should be created before any other gl function and shaders */
 	// Create the models
 	// c.createCuboid(textureGrass, 1);
-	initWorld(textureGrass, textureWater, texturePlayer, textureLava, textureDirt);
+	initWorld(textureGrass, textureWater, textureLava, textureDirt);
 	
 	// Create and compile our GLSL program from the shaders
 	programID = LoadShaders( "Sample_GL.vert", "Sample_GL.frag" );
@@ -1577,44 +1582,28 @@ void initGL (GLFWwindow* window, int width, int height)
 
 void draw ()
 {
-  // clear the color and depth in the frame buffer
-  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// clear the color and depth in the frame buffer
+	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // use the loaded shader program
-  // Don't change unless you know what you are doing
-  //glUseProgram (programID);
-    glUseProgram(textureProgramID);
+	// use the loaded shader program
+	// Don't change unless you know what you are doing
+	glUseProgram(textureProgramID);
 
-  	cameraChange();
+	cameraChange();
 
-  // Compute ViewProject matrix as view/camera might not be changed for this frame (basic scenario)
-  //  Don't change unless you are sure!!
-  glm::mat4 VP = Matrices.projection * Matrices.view;
+	// Compute ViewProject matrix as view/camera might not be changed for this frame (basic scenario)
+	//  Don't change unless you are sure!!
+	glm::mat4 VP = Matrices.projection * Matrices.view;
 
-  // Send our transformation to the currently bound shader, in the "MVP" uniform
-  // For each model you render, since the MVP will be different (at least the M part)
-  //  Don't change unless you are sure!!
-  glm::mat4 MVP;	// MVP = Projection * View * Model
-
-
-  // Load identity to model matrix
-  Matrices.model = glm::mat4(1.0f);
-
-  /* Render your scene */
+	// Send our transformation to the currently bound shader, in the "MVP" uniform
+	// For each model you render, since the MVP will be different (at least the M part)
+	//  Don't change unless you are sure!!
+	glm::mat4 MVP;	// MVP = Projection * View * Model
 
 
-/*
-  Matrices.model = glm::mat4(1.0f);
-  glm::mat4 translateCuboid = glm::translate (glm::vec3(2, 0, 0));  
-  //glm::mat4 rotateCuboid = glm::rotate((float)(cube_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
-  Matrices.model *= (translateCuboid);
-  MVP = VP * Matrices.model;
-  glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
-  draw3DObject(cube);
-*/
-
-  //cb->draw();
-  drawWorld();
+	// Load identity to model matrix
+	Matrices.model = glm::mat4(1.0f);
+	drawWorld();
 
 }
 
@@ -1628,11 +1617,22 @@ void lavacheck()
 	int cxx1 = floor(cx1), czz1 = floor(cz1);
 	int number = (cxx * 30) + czz;
 	int number1 = (cxx1 * 30) + czz1;
-	if(field[number]->getBlockType() == 4 || field[number1]->getBlockType() == 4)
-		cout<<"Yes"<<endl;
-	else
-		cout<<"No"<<endl;
-	// cout<<cx<<" "<<cz<<" "<<number<<endl;
+	if(number >= 0 && number < 900)
+	{
+		if(field[number]->getBlockType() == 4)
+		{
+			initPlayer();
+			return;
+		}
+	}
+	if(number1 >= 0 && number1 < 900)
+	{
+		if	(field[number1]->getBlockType() == 4)
+		{
+			initPlayer();
+			return;
+		}
+	}
 }
 
 int main (int argc, char** argv)
