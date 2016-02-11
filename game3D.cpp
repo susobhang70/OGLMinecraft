@@ -891,6 +891,11 @@ class Player : public Cuboid
 		void moveBackward();
 		void moveLeft();
 		void moveRight();
+		void moveFR();
+		void moveFL();
+		void moveDR();
+		void moveDL();
+		void moveAnimation();
 		void playerHeadBlock();
 		void playerBodyBlock();
 		void playerLegBlock();
@@ -1107,9 +1112,8 @@ void Player::playerLeftHandBlock()
  	m_cuboid = create3DTexturedObject(GL_TRIANGLES, 12 * 3, m_vertex_buffer_data, m_texture_buffer_data, m_textureID, GL_FILL);
 }
 
-void Player::moveForward()
+void Player::moveAnimation()
 {
-	m_x += 0.1;
 	if(m_type == 4 || m_type == 5 || m_type == 3 || m_type == 6)
 	{
 		m_rotation += m_rotationincrement;
@@ -1124,63 +1128,57 @@ void Player::moveForward()
 			m_rotation = -30.0f;
 		}
 	}
+}
+
+void Player::moveForward()
+{
+	m_x += 0.1;
+	moveAnimation();
 }
 
 void Player::moveBackward()
 {
 	m_x -= 0.1;
-	if(m_type == 4 || m_type == 5 || m_type == 3 || m_type == 6)
-	{
-		m_rotation += m_rotationincrement;
-		if(m_rotation > 30.0f)
-		{
-			m_rotationincrement *= -1;
-			m_rotation = 30.0f;
-		}
-		else if(m_rotation < -30.0f)
-		{
-			m_rotationincrement *= -1;
-			m_rotation = -30.0f;
-		}
-	}
+	moveAnimation();
 }
 
 void Player::moveLeft()
 {
 	m_z -= 0.1;
-	if(m_type == 4 || m_type == 5 || m_type == 3 || m_type == 6)
-	{
-		m_rotation += m_rotationincrement;
-		if(m_rotation > 30.0f)
-		{
-			m_rotationincrement *= -1;
-			m_rotation = 30.0f;
-		}
-		else if(m_rotation < -30.0f)
-		{
-			m_rotationincrement *= -1;
-			m_rotation = -30.0f;
-		}
-	}
+	moveAnimation();
 }
 
 void Player::moveRight()
 {
 	m_z += 0.1;
-	if(m_type == 4 || m_type == 5 || m_type == 3 || m_type == 6)
-	{
-		m_rotation += m_rotationincrement;
-		if(m_rotation > 30.0f)
-		{
-			m_rotationincrement *= -1;
-			m_rotation = 30.0f;
-		}
-		else if(m_rotation < -30.0f)
-		{
-			m_rotationincrement *= -1;
-			m_rotation = -30.0f;
-		}
-	}
+	moveAnimation();
+}
+
+void Player::moveFR()
+{
+	m_x += sqrt(0.005);
+	m_z += sqrt(0.005);
+	moveAnimation();
+}
+
+void Player::moveFL()
+{
+	m_x += sqrt(0.005);
+	m_z -= sqrt(0.005);
+	moveAnimation();
+}
+
+void Player::moveDR()
+{
+	m_x -= sqrt(0.005);
+	m_z += sqrt(0.005);
+	moveAnimation();
+}
+void Player::moveDL()
+{
+	m_x -= sqrt(0.005);
+	m_z -= sqrt(0.005);
+	moveAnimation();
 }
 
 // Cuboid c(0, 0, 0, 5, 5, 5);
@@ -1317,6 +1315,46 @@ void moveRight()
 
 }
 
+void moveFR()
+{
+	playerHead->moveFR();
+	playerBody->moveFR();
+	playerLeftLeg->moveFR();
+	playerRightLeg->moveFR();
+	playerRightHand->moveFR();
+	playerLeftHand->moveFR();
+}
+
+void moveFL()
+{
+	playerHead->moveFL();
+	playerBody->moveFL();
+	playerLeftLeg->moveFL();
+	playerRightLeg->moveFL();
+	playerRightHand->moveFL();
+	playerLeftHand->moveFL();
+}
+
+void moveDR()
+{
+	playerHead->moveDR();
+	playerBody->moveDR();
+	playerLeftLeg->moveDR();
+	playerRightLeg->moveDR();
+	playerRightHand->moveDR();
+	playerLeftHand->moveDR();
+}
+
+void moveDL()
+{
+	playerHead->moveDL();
+	playerBody->moveDL();
+	playerLeftLeg->moveDL();
+	playerRightLeg->moveDL();
+	playerRightHand->moveDL();
+	playerLeftHand->moveDL();
+}
+
 void cameraChange()
 {
 	if(defaultCam == 1)
@@ -1336,7 +1374,7 @@ void cameraChange()
 	else if(defaultCam == 2)
 	{
 		// Eye - Location of camera. Don't change unless you are sure!!
-		glm::vec3 eye ( -1.5 + playerHead->getX(), 2 + playerHead->getY(), playerHead->getZ() - 0.28);
+		glm::vec3 eye ( -1.75 + playerHead->getX(), 2 + playerHead->getY(), playerHead->getZ() - 0.28);
 		// Target - Where is the camera looking at.  Don't change unless you are sure!!
 		glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ()-0.28);
 
@@ -1453,13 +1491,21 @@ GLFWwindow* window; // window desciptor/handle
 
 void PollKeys()
 {
-	if(glfwGetKey(window, GLFW_KEY_UP))
+	if(glfwGetKey(window, GLFW_KEY_UP) && glfwGetKey(window, GLFW_KEY_LEFT))
+		moveFL();
+	else if(glfwGetKey(window, GLFW_KEY_UP) && glfwGetKey(window, GLFW_KEY_RIGHT))
+		moveFR();
+	else if(glfwGetKey(window, GLFW_KEY_DOWN) && glfwGetKey(window, GLFW_KEY_LEFT))
+		moveDL();
+	else if(glfwGetKey(window, GLFW_KEY_DOWN) && glfwGetKey(window, GLFW_KEY_RIGHT))
+		moveDR();
+	else if(glfwGetKey(window, GLFW_KEY_UP))
 		moveForward();
-	if(glfwGetKey(window, GLFW_KEY_DOWN))
+	else if(glfwGetKey(window, GLFW_KEY_DOWN))
 		moveBackward();
-	if(glfwGetKey(window, GLFW_KEY_LEFT))
+	else if(glfwGetKey(window, GLFW_KEY_LEFT))
 		moveLeft();
-	if(glfwGetKey(window, GLFW_KEY_RIGHT))
+	else if(glfwGetKey(window, GLFW_KEY_RIGHT))
 		moveRight();
 }
 
