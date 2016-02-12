@@ -467,6 +467,9 @@ class Cuboid
 		float getX() { return m_x; }
 		float getY() { return m_y; }
 		float getZ() { return m_z; }
+		float getHeight() { return m_height; }
+		float getWidth() { return m_width; }
+		float getLength() { return m_length; }
 		int getBlockType() { return m_blocktype; }
 };
 
@@ -882,6 +885,7 @@ class Player : public Cuboid
 	private:
 		int m_type;
 		float m_totalmove, m_rotationincrement;
+		float m_speed;
 
 	public:
 		Player(float x, float y, float z, float length, float width, float height);
@@ -895,6 +899,8 @@ class Player : public Cuboid
 		void moveFL();
 		void moveDR();
 		void moveDL();
+		void moveUp();
+		void moveDown();
 		void moveAnimation();
 		void playerHeadBlock();
 		void playerBodyBlock();
@@ -906,6 +912,7 @@ class Player : public Cuboid
 Player::Player(float x, float y, float z, float length, float width, float height): Cuboid(x, y, z, length, width, height)
 {
 	m_type = 0;
+	m_speed = 0.1;
 }
 
 Player::Player(Player &p): Cuboid(p)
@@ -1132,59 +1139,71 @@ void Player::moveAnimation()
 
 void Player::moveForward()
 {
-	m_x += 0.1;
+	m_x += m_speed;
 	moveAnimation();
 }
 
 void Player::moveBackward()
 {
-	m_x -= 0.1;
+	m_x -= m_speed;
 	moveAnimation();
 }
 
 void Player::moveLeft()
 {
-	m_z -= 0.1;
+	m_z -= m_speed;
 	moveAnimation();
 }
 
 void Player::moveRight()
 {
-	m_z += 0.1;
+	m_z += m_speed;
 	moveAnimation();
 }
 
 void Player::moveFR()
 {
-	m_x += sqrt(0.005);
-	m_z += sqrt(0.005);
+	m_x += sqrt(m_speed * m_speed / 2.0f);
+	m_z += sqrt(m_speed * m_speed / 2.0f);
 	moveAnimation();
 }
 
 void Player::moveFL()
 {
-	m_x += sqrt(0.005);
-	m_z -= sqrt(0.005);
+	m_x += sqrt(m_speed * m_speed / 2.0f);
+	m_z -= sqrt(m_speed * m_speed / 2.0f);
 	moveAnimation();
 }
 
 void Player::moveDR()
 {
-	m_x -= sqrt(0.005);
-	m_z += sqrt(0.005);
+	m_x -= sqrt(m_speed * m_speed / 2.0f);
+	m_z += sqrt(m_speed * m_speed / 2.0f);
 	moveAnimation();
 }
 void Player::moveDL()
 {
-	m_x -= sqrt(0.005);
-	m_z -= sqrt(0.005);
+	m_x -= sqrt(m_speed * m_speed / 2.0f);
+	m_z -= sqrt(m_speed * m_speed / 2.0f);
 	moveAnimation();
 }
 
+void Player::moveUp()
+{
+	m_y += m_speed;
+}
+
+void Player::moveDown()
+{
+	m_y -= m_speed;
+}
+
 // Cuboid c(0, 0, 0, 5, 5, 5);
-vector<Cuboid *> field;
+vector<Cuboid *> field, pillars;
 vector<Cuboid *> water;
 Player *playerHead = NULL, *playerBody, *playerLeftLeg, *playerRightLeg, *playerLeftHand, *playerRightHand;
+int air = 0, direction;
+float highthreshold = 1.5, jumpheight;
 
 void initPlayer()
 {
@@ -1239,6 +1258,7 @@ void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TextureIDLav
 				temp = new Cuboid(i, -1, j, 1, 1, 1);
 				temp->createCuboid(TextureIDGrass, 1);
 				l += 2;
+				pillars.push_back(temp);
 			}
 			else
 			{
@@ -1355,6 +1375,79 @@ void moveDL()
 	playerLeftHand->moveDL();
 }
 
+void moveUp()
+{
+	playerHead->moveUp();
+	playerBody->moveUp();
+	playerLeftLeg->moveUp();
+	playerRightLeg->moveUp();
+	playerRightHand->moveUp();
+	playerLeftHand->moveUp();
+}
+
+void moveDown()
+{
+	playerHead->moveDown();
+	playerBody->moveDown();
+	playerLeftLeg->moveDown();
+	playerRightLeg->moveDown();
+	playerRightHand->moveDown();
+	playerLeftHand->moveDown();
+}
+
+int getCurrentBlock(int op = 1)
+{
+	float cx = playerBody->getX(), cz = playerBody->getZ() + 0.56;
+	if(op == 2)
+	{
+		cz += 0.28;
+		cx += 0.14;
+	}
+	int cxx = floor(cx), czz = floor(cz);
+	int number = (cxx * 30) + czz;
+	return number;
+}
+
+void jump()
+{
+	if(air == 0)
+	{
+		jumpheight = playerLeftLeg->getY();
+		air = 1;
+		direction = 1;
+	}
+
+	if(direction == 1)
+		moveUp();
+	else
+		moveDown();
+	int k = 0;
+	
+	float cy = playerLeftLeg->getY();
+	int number = getCurrentBlock();
+	if(direction == 1 && cy - jumpheight >= highthreshold )
+	{
+		direction = -1;
+	}
+
+	if(number >= 0 && number < 900)
+	{
+		if(cy < field[number]->getY() + playerLeftLeg->getLength())
+		{
+			moveUp();
+			air = 0;
+		}
+	}
+	else
+	{
+		if(playerBody->getY() < water[0]->getY())
+		{
+			air = 0;
+			initPlayer();
+		}
+	}
+}
+
 void cameraChange()
 {
 	if(defaultCam == 1)
@@ -1442,6 +1535,9 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
             case GLFW_KEY_4:
             	defaultCam = 4;
             	break;	
+            case GLFW_KEY_SPACE:
+            	if(air == 0)
+            		jump();
             default:
                 break;
         }
@@ -1492,21 +1588,196 @@ GLFWwindow* window; // window desciptor/handle
 void PollKeys()
 {
 	if(glfwGetKey(window, GLFW_KEY_UP) && glfwGetKey(window, GLFW_KEY_LEFT))
-		moveFL();
+	{
+		int p1 = -1, p2 = -1;
+		int number = getCurrentBlock() - 1;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				p1 = 1;
+			}
+			else
+				p1 = 0;
+		}
+
+		number = getCurrentBlock() + 30;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				p2 = 1;
+			}
+			else
+				p2 = 0;
+		}
+		if(p1 && !p2)
+			moveLeft();
+		else if(!p1 && p2)
+			moveForward();
+		else if((p1 == -1 && p2 == -1) || (p1 && p2))
+			moveFL();
+	}
 	else if(glfwGetKey(window, GLFW_KEY_UP) && glfwGetKey(window, GLFW_KEY_RIGHT))
-		moveFR();
+	{
+		int p1 = -1, p2 = -1;
+		int number = getCurrentBlock() + 1;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				p1 = 1;
+			}
+			else
+				p1 = 0;
+		}
+
+		number = getCurrentBlock() + 30;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				p2 = 1;
+			}
+			else
+				p2 = 0;
+		}
+		if(p1 && !p2)
+			moveRight();
+		else if(!p1 && p2)
+			moveForward();
+		else if((p1 == -1 && p2 == -1) || (p1 && p2))
+			moveFR();
+	}
 	else if(glfwGetKey(window, GLFW_KEY_DOWN) && glfwGetKey(window, GLFW_KEY_LEFT))
-		moveDL();
+	{
+		int p1 = -1, p2 = -1;
+		int number = getCurrentBlock() - 1;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				p1 = 1;
+			}
+			else
+				p1 = 0;
+		}
+
+		number = getCurrentBlock() - 30;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				p2 = 1;
+			}
+			else
+				p2 = 0;
+		}
+		if(p1 && !p2)
+			moveLeft();
+		else if(!p1 && p2)
+			moveBackward();
+		else if((p1 == -1 && p2 == -1) || (p1 && p2))
+			moveDL();
+	}
 	else if(glfwGetKey(window, GLFW_KEY_DOWN) && glfwGetKey(window, GLFW_KEY_RIGHT))
-		moveDR();
+	{
+		int p1 = -1, p2 = -1;
+		int number = getCurrentBlock() + 1;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				p1 = 1;
+			}
+			else
+				p1 = 0;
+		}
+
+		number = getCurrentBlock() - 30;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				p2 = 1;
+			}
+			else
+				p2 = 0;
+		}
+		if(p1 && !p2)
+			moveRight();
+		else if(!p1 && p2)
+			moveBackward();
+		else if((p1 == -1 && p2 == -1) || (p1 && p2))
+			moveDR();
+	}
 	else if(glfwGetKey(window, GLFW_KEY_UP))
-		moveForward();
+	{
+		int number = getCurrentBlock() + 30;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				moveForward();
+			}
+		}
+		else
+			moveForward();
+	}
 	else if(glfwGetKey(window, GLFW_KEY_DOWN))
-		moveBackward();
+	{
+		int number = getCurrentBlock() - 30;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				moveBackward();
+			}
+		}
+		else
+			moveBackward();
+	}
 	else if(glfwGetKey(window, GLFW_KEY_LEFT))
-		moveLeft();
+	{
+		int number = getCurrentBlock() - 1;
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				moveLeft();
+			}
+		}
+		else
+			moveLeft();
+	}
 	else if(glfwGetKey(window, GLFW_KEY_RIGHT))
-		moveRight();
+	{
+		int number = getCurrentBlock() + 1;
+		
+		if(number >=0 && number < 900)
+		{
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			{
+				moveRight();
+			}
+		}
+		else
+			moveRight();
+	}
+
+	int number = getCurrentBlock(2);
+	int ground;
+	if(number >=0 && number < 900)
+		ground = field[number]->getY();
+	else
+	{
+		ground = water[0]->getY();
+	}
+	if(playerLeftLeg->getY() - playerLeftLeg->getLength() - ground > 0.2 && air == 0)
+	{
+		air = 1;
+		direction = -1;
+	}
 }
 
 /* Initialise glfw window, I/O callbacks and the renderer to use */
@@ -1712,10 +1983,12 @@ int main (int argc, char** argv)
 
         // Control based on time (Time based transformation like 5 degrees rotation every 0.5s)
         current_time = glfwGetTime(); // Time in seconds
-        if ((current_time - last_update_time) >= 0.5) { // atleast 0.5s elapsed since last frame
+        if ((current_time - last_update_time) >= 0.01) { // atleast 0.5s elapsed since last frame
             // do something every 0.5 seconds ..
 
             last_update_time = current_time;
+            if(air != 0)
+            	jump();
         }
         // for(int j = 0; j<4000000; j++);
     }
