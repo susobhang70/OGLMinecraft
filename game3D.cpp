@@ -14,6 +14,7 @@
 #include <FTGL/ftgl.h>
 #include <GLFW/glfw3.h>
 #include <SOIL/SOIL.h>
+#include <SFML/Audio.hpp>
 
 #define YELLOW 1.0f, 1.0f, 0.0f
 
@@ -22,9 +23,23 @@
 
 using namespace std;
 
-int defaultCam = 2;
+int defaultCam = 2, pan = 0;
 int pits[895];
-GLuint texturePlayer;
+int lives = 5, score = 0, level = 1, oldlevel = 1, pitcount = 100, oldscore = 0;
+
+char scoreboard[100];
+
+GLuint texturePlayer, textureGrass, textureWater, textureLava, textureDirt;
+sf::Music grassSound;
+sf::Music levelupSound;
+
+float heli_x, heli_y, heli_z, old_helix, old_heliy, old_heliz, helirotation = 0;
+double panoldx, panoldy, panx, pany;
+
+float eyex, eyey, eyez, targetx, targety, targetz, upx, upy, upz, fontx, fonty, fontz, fontrotation;
+
+GLFWwindow* window; // window desciptor/handle
+
 
 struct VAO {
     GLuint VertexArrayID;
@@ -65,14 +80,24 @@ void findLavaBlocks()
 
 	random_shuffle(&pits[0], &pits[895]);
 
-	qsort(pits, 100, sizeof(int), compare);
+	qsort(pits, pitcount, sizeof(int), compare);
 
 	// for(int i = 0; i < 100; i++)
 	// 	cout<<pits[i]<<endl;
 
 }
 
-GLuint programID, textureProgramID;
+void initPlayer();
+
+void resetWorld()
+{
+	lives = 5; score = 0; level = 1; oldlevel = 0; pitcount = 100; oldscore = 0;
+	defaultCam = 2, pan = 0;
+	initPlayer();
+}
+
+
+GLuint programID, textureProgramID, fontProgramID;
 
 /* Function to load Shaders - Use it as it is */
 GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path) {
@@ -449,7 +474,8 @@ class Cuboid
 {
 	protected:
 		float m_x, m_y, m_z, m_rotation;
-		float m_height, m_width, m_length;
+		float m_height, m_width, m_length, m_upspeed;
+		float m_maxheight, m_minheight;
 		GLfloat m_vertex_buffer_data[12*3*3];
 		GLfloat m_color_buffer_data[12*3*3];
 		GLfloat m_texture_buffer_data[12*3*2];
@@ -458,7 +484,7 @@ class Cuboid
 		int m_blocktype;
 
 	public:
-		Cuboid(float x, float y, float z, float length, float width, float height);
+		Cuboid(float x, float y, float z, float length, float width, float height, float maxheight, float minheight, float upspeed);
 		Cuboid(Cuboid &c);
 		void createCuboid(GLuint, int);
 		void draw();
@@ -471,9 +497,11 @@ class Cuboid
 		float getWidth() { return m_width; }
 		float getLength() { return m_length; }
 		int getBlockType() { return m_blocktype; }
+		void setY(float y) { m_y = y; }
+		void oscillateBlock();
 };
 
-Cuboid::Cuboid(float x, float y, float z, float length, float width, float height)
+Cuboid::Cuboid(float x, float y, float z, float length, float width, float height, float maxheight = 10.0f, float minheight = -9.0f, float upspeed = 0.1f)
 {
 	m_x = x;
 	m_y = y;
@@ -483,7 +511,11 @@ Cuboid::Cuboid(float x, float y, float z, float length, float width, float heigh
 	m_height = height;
 	m_rotation = 0;
 	m_cuboid = NULL;
-
+	m_maxheight = maxheight;
+	m_minheight = minheight;
+	m_upspeed = upspeed;
+	if(rand()%2 == 0)
+		m_upspeed *= -1;
 }
 
 Cuboid::Cuboid(Cuboid &c)
@@ -496,6 +528,9 @@ Cuboid::Cuboid(Cuboid &c)
 	m_height = c.m_height;
 	m_cuboid = c.m_cuboid;
 	m_rotation = c.m_rotation;
+	m_maxheight = c.m_maxheight;
+	m_minheight = c.m_minheight;
+	m_upspeed = c.m_upspeed;
 }
 
 void Cuboid::createCuboid(GLuint textureID, int blocktype)
@@ -809,75 +844,33 @@ void Cuboid::waterBlock()
 }
 
 float camera_rotation_angle = 90;
-float rectangle_rotation = 0;
-float triangle_rotation = 0;
 
 /* Render the scene with openGL */
 /* Edit this function according to your assignment */
 void Cuboid::draw ()
 {
+	glm::mat4 MVP;	// MVP = Projection * View * Model
 
-  // Send our transformation to the currently bound shader, in the "MVP" uniform
-  // For each model you render, since the MVP will be different (at least the M part)
-  //  Don't change unless you are sure!!
-  glm::mat4 MVP;	// MVP = Projection * View * Model
+	Matrices.model = glm::mat4(1.0f);
+	glm::mat4 translateCuboid = glm::translate (glm::vec3(m_x, m_y, m_z));  
+	glm::mat4 rotateCuboid = glm::rotate((float)(m_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
+	Matrices.model *= (translateCuboid * rotateCuboid);
+	MVP = Matrices.projection * Matrices.view* Matrices.model;
 
-
-  // Load identity to model matrix
-  Matrices.model = glm::mat4(1.0f);
-
-  /* Render your scene */
-/*
-  glm::mat4 translateTriangle = glm::translate (glm::vec3(-2.0f, 0.0f, 0.0f)); // glTranslatef
-  glm::mat4 rotateTriangle = glm::rotate((float)(triangle_rotation*M_PI/180.0f), glm::vec3(0,0,1));  // rotate about vector (1,0,0)
-  glm::mat4 triangleTransform = translateTriangle * rotateTriangle;
-  Matrices.model *= triangleTransform; 
-  MVP = VP * Matrices.model; // MVP = p * V * M
-
-  //  Don't change unless you are sure!!
-  glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
-
-  // draw3DObject draws the VAO given to it using current MVP matrix
-  draw3DObject(triangle);
-
-  // Pop matrix to undo transformations till last push matrix instead of recomputing model matrix
-  // glPopMatrix ();
-  Matrices.model = glm::mat4(1.0f);
-
-  glm::mat4 translateRectangle = glm::translate (glm::vec3(2, 0, 0));        // glTranslatef
-  glm::mat4 rotateRectangle = glm::rotate((float)(rectangle_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
-  Matrices.model *= (translateRectangle * rotateRectangle);
-  MVP = VP * Matrices.model;
-  glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
-
-  // draw3DObject draws the VAO given to it using current MVP matrix
-  draw3DObject(rectangle);
-*/
-
-  Matrices.model = glm::mat4(1.0f);
-  glm::mat4 translateCuboid = glm::translate (glm::vec3(m_x, m_y, m_z));  
-  glm::mat4 rotateCuboid = glm::rotate((float)(m_rotation*M_PI/180.0f), glm::vec3(0,0,1)); // rotate about vector (-1,1,1)
-  Matrices.model *= (translateCuboid * rotateCuboid);
-  MVP = Matrices.projection * Matrices.view* Matrices.model;
-
-  // glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
-  // draw3DObject(m_cuboid);
-
-
-  glUniformMatrix4fv(Matrices.TexMatrixID, 1, GL_FALSE, &MVP[0][0]);
+	glUniformMatrix4fv(Matrices.TexMatrixID, 1, GL_FALSE, &MVP[0][0]);
 
 	// Set the texture sampler to access Texture0 memory
 	glUniform1i(glGetUniformLocation(textureProgramID, "texSampler"), 0);
 
 	// draw3DObject draws the VAO given to it using current MVP matrix
 	draw3DTexturedObject(m_cuboid);
+}
 
-  // Increment angles
-  // float increments = 1;
-
-  // camera_rotation_angle += 0.01; // Simulating camera rotation
-  // triangle_rotation = triangle_rotation + increments*triangle_rot_dir*triangle_rot_status;
-  // rectangle_rotation = rectangle_rotation + increments*rectangle_rot_dir*rectangle_rot_status;
+void Cuboid::oscillateBlock()
+{
+	m_y += m_upspeed;
+	if(m_y >= m_maxheight || m_y <= m_minheight)
+		m_upspeed = -m_upspeed;
 }
 
 class Player : public Cuboid
@@ -885,7 +878,7 @@ class Player : public Cuboid
 	private:
 		int m_type;
 		float m_totalmove, m_rotationincrement;
-		float m_speed;
+		float m_speed, m_speed2;
 
 	public:
 		Player(float x, float y, float z, float length, float width, float height);
@@ -907,12 +900,16 @@ class Player : public Cuboid
 		void playerLegBlock();
 		void playerRightHandBlock();
 		void playerLeftHandBlock();
+		void moveFast() { if(m_speed <= 0.24) m_speed += 0.02; }
+		void moveSlow() { if(m_speed >= 0.10) m_speed -= 0.02; }
+
 };
 
 Player::Player(float x, float y, float z, float length, float width, float height): Cuboid(x, y, z, length, width, height)
 {
 	m_type = 0;
 	m_speed = 0.1;
+	m_speed2 = 0.1;
 }
 
 Player::Player(Player &p): Cuboid(p)
@@ -1190,12 +1187,12 @@ void Player::moveDL()
 
 void Player::moveUp()
 {
-	m_y += m_speed;
+	m_y += m_speed2;
 }
 
 void Player::moveDown()
 {
-	m_y -= m_speed;
+	m_y -= m_speed2;
 }
 
 // Cuboid c(0, 0, 0, 5, 5, 5);
@@ -1203,10 +1200,20 @@ vector<Cuboid *> field, pillars;
 vector<Cuboid *> water;
 Player *playerHead = NULL, *playerBody, *playerLeftLeg, *playerRightLeg, *playerLeftHand, *playerRightHand;
 int air = 0, direction;
-float highthreshold = 1.5, jumpheight;
+float highthreshold = 1.5, jumpheight, jumpthreshold = 2.5;
+
+
+void refreshWorld();
 
 void initPlayer()
 {
+	if(level != oldlevel)
+	{
+		oldlevel = level;
+		oldscore = score;
+		refreshWorld();
+	}
+	lives--;
 	if(playerHead != NULL)
 	{
 		delete playerHead, playerBody, playerLeftHand, playerLeftLeg, playerRightHand, playerRightLeg;
@@ -1223,6 +1230,60 @@ void initPlayer()
 	playerLeftHand->createPlayer(texturePlayer, 4);
 	playerRightHand = new Player(0.14, 2.44, -0.56, 1.12, 0.28, 0.28);
 	playerRightHand->createPlayer(texturePlayer, 5);
+}
+
+void refreshWorld()
+{
+	findLavaBlocks();
+	for(int i = 0; i < 30; i++)
+	{
+		for(int j = 0; j < 30; j++)
+		{
+			if(field[i*30 + j]->getBlockType() == 4 || field[i*30 + j]->getBlockType() == 5)
+			{
+				Cuboid *temp = field[i*30 + j];
+				delete temp;
+				temp = new Cuboid(i, 0, j, 1, 1, 1);
+				temp->createCuboid(textureGrass, 1);
+				field[i*30 + j] = temp;
+			}
+		}
+	}
+
+	while(!pillars.empty())
+		pillars.pop_back();
+
+	int k = 0, l = 1;
+
+	for(int i = 0; i < 30; i++)
+	{
+		for(int j = 0; j < 30; j++)
+		{
+			Cuboid *temp;
+			if(i * 30 + j == pits[k])
+			{
+				temp = field[i*30 + j];
+				delete temp;
+				temp = new Cuboid(i, 0, j, 1, 1, 1);
+				temp->createCuboid(textureLava, 4);
+				k += 2;
+				field[i*30 + j] = temp;
+
+			}
+			else if(i * 30 + j == pits[l])
+			{
+				temp = field[i*30 + j];
+				delete temp;
+				temp = new Cuboid(i, -1, j, 1, 1, 1);
+				temp->createCuboid(textureGrass, 5);
+				l += 2;
+				pillars.push_back(temp);
+				field[i*30 + j] = temp;
+
+			}
+		}
+	}
+
 }
 
 void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TextureIDLava, GLuint TextureIDDirt)
@@ -1256,9 +1317,14 @@ void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TextureIDLav
 			else if(i * 30 + j == pits[l])
 			{
 				temp = new Cuboid(i, -1, j, 1, 1, 1);
-				temp->createCuboid(TextureIDGrass, 1);
+				temp->createCuboid(TextureIDGrass, 5);
 				l += 2;
 				pillars.push_back(temp);
+			}
+			else if(i * 30 + j == 899)
+			{
+				temp = new Cuboid(i, 0, j, 1, 1, 1);
+				temp->createCuboid(TextureIDDirt, 1);
 			}
 			else
 			{
@@ -1293,6 +1359,8 @@ void drawWorld()
 
 void moveForward()
 {
+	if(grassSound.getStatus() == sf::SoundSource::Stopped || grassSound.getStatus() == sf::SoundSource::Paused)
+		grassSound.play();
 	playerHead->moveForward();
 	playerBody->moveForward();
 	playerLeftLeg->moveForward();
@@ -1304,6 +1372,8 @@ void moveForward()
 
 void moveBackward()
 {
+	if(grassSound.getStatus() == sf::SoundSource::Stopped || grassSound.getStatus() == sf::SoundSource::Paused)
+		grassSound.play();
 	playerHead->moveBackward();
 	playerBody->moveBackward();
 	playerRightLeg->moveBackward();
@@ -1315,6 +1385,8 @@ void moveBackward()
 
 void moveLeft()
 {
+	if(grassSound.getStatus() == sf::SoundSource::Stopped || grassSound.getStatus() == sf::SoundSource::Paused)
+		grassSound.play();
 	playerHead->moveLeft();
 	playerBody->moveLeft();
 	playerLeftLeg->moveLeft();
@@ -1326,6 +1398,8 @@ void moveLeft()
 
 void moveRight()
 {
+	if(grassSound.getStatus() == sf::SoundSource::Stopped || grassSound.getStatus() == sf::SoundSource::Paused)
+		grassSound.play();
 	playerHead->moveRight();
 	playerBody->moveRight();
 	playerLeftLeg->moveRight();
@@ -1337,6 +1411,8 @@ void moveRight()
 
 void moveFR()
 {
+	if(grassSound.getStatus() == sf::SoundSource::Stopped || grassSound.getStatus() == sf::SoundSource::Paused)
+		grassSound.play();
 	playerHead->moveFR();
 	playerBody->moveFR();
 	playerLeftLeg->moveFR();
@@ -1347,6 +1423,8 @@ void moveFR()
 
 void moveFL()
 {
+	if(grassSound.getStatus() == sf::SoundSource::Stopped || grassSound.getStatus() == sf::SoundSource::Paused)
+		grassSound.play();
 	playerHead->moveFL();
 	playerBody->moveFL();
 	playerLeftLeg->moveFL();
@@ -1357,6 +1435,8 @@ void moveFL()
 
 void moveDR()
 {
+	if(grassSound.getStatus() == sf::SoundSource::Stopped || grassSound.getStatus() == sf::SoundSource::Paused)
+		grassSound.play();
 	playerHead->moveDR();
 	playerBody->moveDR();
 	playerLeftLeg->moveDR();
@@ -1367,6 +1447,8 @@ void moveDR()
 
 void moveDL()
 {
+	if(grassSound.getStatus() == sf::SoundSource::Stopped || grassSound.getStatus() == sf::SoundSource::Paused)
+		grassSound.play();
 	playerHead->moveDL();
 	playerBody->moveDL();
 	playerLeftLeg->moveDL();
@@ -1395,7 +1477,27 @@ void moveDown()
 	playerLeftHand->moveDown();
 }
 
-int getCurrentBlock(int op = 1)
+void moveSlow()
+{
+	playerHead->moveSlow();
+	playerBody->moveSlow();
+	playerLeftLeg->moveSlow();
+	playerRightLeg->moveSlow();
+	playerRightHand->moveSlow();
+	playerLeftHand->moveSlow();
+}
+
+void moveFast()
+{
+	playerHead->moveFast();
+	playerBody->moveFast();
+	playerLeftLeg->moveFast();
+	playerRightLeg->moveFast();
+	playerRightHand->moveFast();
+	playerLeftHand->moveFast();
+}
+
+int getRightCurrentBlock(int op = 1)
 {
 	float cx = playerBody->getX(), cz = playerBody->getZ() + 0.56;
 	if(op == 2)
@@ -1403,7 +1505,32 @@ int getCurrentBlock(int op = 1)
 		cz += 0.28;
 		cx += 0.14;
 	}
+	else if(op == 3)
+	{
+		cz -= 0.56;
+	}
 	int cxx = floor(cx), czz = floor(cz);
+	int number = (cxx * 30) + czz;
+	return number;
+}
+
+int getCurrentBlock(int op = 1)
+{
+	float cx = playerBody->getX(), cz = playerBody->getZ();
+	if(op == 2)
+	{
+		cz -= 0.28;
+		cx -= 0.14;
+	}
+	else if(op == 3)
+	{
+		cz -= 0.56;
+	}
+
+	if(cz > 29 || cz < -1)
+		return -1;
+
+	int cxx = floor(cx), czz = ceil(cz);
 	int number = (cxx * 30) + czz;
 	return number;
 }
@@ -1425,6 +1552,16 @@ void jump()
 	
 	float cy = playerLeftLeg->getY();
 	int number = getCurrentBlock();
+	int number1 = getCurrentBlock(3);
+
+	float ground = water[0]->getY(), ground1 = water[0]->getY();
+	if(number >= 0 && number < 900)
+		ground = field[number]->getY();
+	if(number1 >= 0 && number1 < 900)
+		ground1 = field[number1]->getY();
+
+	float max = (ground > ground1) ? ground : ground1;
+
 	if(direction == 1 && cy - jumpheight >= highthreshold )
 	{
 		direction = -1;
@@ -1432,10 +1569,12 @@ void jump()
 
 	if(number >= 0 && number < 900)
 	{
-		if(cy < field[number]->getY() + playerLeftLeg->getLength())
+		if(cy < max + playerLeftLeg->getLength())
 		{
 			moveUp();
 			air = 0;
+			if(jumpheight - cy >= jumpthreshold)
+				initPlayer();
 		}
 	}
 	else
@@ -1448,52 +1587,226 @@ void jump()
 	}
 }
 
+// void stayWithGround();
+
+void movePillars()
+{
+	for(vector<Cuboid *>::iterator it = pillars.begin(); it != pillars.end(); ++it)
+		(*it)->oscillateBlock();
+
+}	
+
+void changePlayerY(float y)
+{
+	playerLeftLeg->setY(y + playerLeftLeg->getLength());
+	playerRightLeg->setY(y + playerLeftLeg->getLength());
+	playerBody->setY(playerLeftLeg->getY() + playerBody->getLength());
+	playerRightHand->setY(playerBody->getY());
+	playerLeftHand->setY(playerBody->getY());
+	playerHead->setY(playerBody->getY() + playerHead->getLength());
+}
+
+void stayWithGround()
+{
+	if(air == 0)
+	{
+		int number = getCurrentBlock();
+		int number1 = getCurrentBlock(3);
+		float ground = water[0]->getY(), ground1 = water[0]->getY();
+		if(number >= 0 && number < 900)
+			ground = field[number]->getY();
+		if(number1 >= 0 && number1 < 900)
+			ground1 = field[number1]->getY();
+
+		float max = (ground > ground1) ? ground : ground1;
+		if(max <= playerLeftLeg->getY())
+			changePlayerY(max);
+	}
+}
+
+void prepareHeliCam(GLFWwindow *window)
+{
+	glfwSetCursorPos(window, 650, 350);
+	heli_x = old_helix = 16;
+	heli_y = old_heliy = 15;
+	heli_z = old_heliz = 15;
+	helirotation = 0;
+}
+
+void heliCamMove(GLFWwindow *window)
+{
+	double xpos, ypos;
+	glfwGetCursorPos(window, &xpos, &ypos);
+	
+	float xratio = 26.0 / 15.0;
+	float zratio = 52.0 / 15.0;
+	float xpixelRatio = (xratio * heli_y) / 700.0;
+	float zpixelRatio = (zratio * heli_y) / 1300.0;
+
+	float xmove = 350 - ypos;
+	float totalxmove = xmove * xpixelRatio;
+
+	heli_x = old_helix + totalxmove;
+
+	float zmove = xpos - 650;
+	float totalzmove = zmove * zpixelRatio;
+
+	heli_z = old_heliz + totalzmove;
+
+}
+
+void heliCamPan(GLFWwindow *window)
+{
+	glfwGetCursorPos(window, &panx, &pany);
+
+	float yoffset = panoldy - pany;
+	helirotation = (90.0/350.0) * yoffset;
+}
+
 void cameraChange()
 {
 	if(defaultCam == 1)
 	{
-		// Eye - Location of camera. Don't change unless you are sure!!
-		glm::vec3 eye ( playerHead->getX() + 5*cos(camera_rotation_angle*M_PI/180.0f), playerHead->getY() + 2, playerHead->getZ() + 5*sin(camera_rotation_angle*M_PI/180.0f) );
-		// Target - Where is the camera looking at.  Don't change unless you are sure!!
-		glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ());
+		eyex = playerHead->getX() + 5*cos(camera_rotation_angle*M_PI/180.0f);
+		eyey = playerHead->getY() + 2;
+		eyez = playerHead->getZ() + 5*sin(camera_rotation_angle*M_PI/180.0f);
 
-		// Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
-		glm::vec3 up (0, 1, 0);
+		targetx = playerHead->getX();
+		targety = playerHead->getY();
+		targetz = playerHead->getZ();
 
-		// Compute Camera matrix (view)
-		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
+		upx = 0;
+		upy = 1;
+		upz = 0;
+
+		fontx = eyex + 2;
+		fonty = eyey + 0.2;
+		fontz = eyez;
+		fontrotation = -90.0f;
+
 		camera_rotation_angle -= 0.3; // Simulating camera rotation
 	}
 	else if(defaultCam == 2)
 	{
-		// Eye - Location of camera. Don't change unless you are sure!!
-		glm::vec3 eye ( -1.75 + playerHead->getX(), 2 + playerHead->getY(), playerHead->getZ() - 0.28);
-		// Target - Where is the camera looking at.  Don't change unless you are sure!!
-		glm::vec3 target (playerHead->getX(), playerHead->getY(), playerHead->getZ()-0.28);
+		eyex = -1.75 + playerHead->getX();
+		eyey = 2 + playerHead->getY();
+		eyez = playerHead->getZ() - 0.28;
 
-		// Up - Up vector defines tilt of camera.  Don't change unless you are sure!!
-		glm::vec3 up (0, 0.1, 0);
+		targetx = playerHead->getX();
+		targety = playerHead->getY();
+		targetz = playerHead->getZ() - 0.28;
 
-		// Compute Camera matrix (view)
-		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
-		camera_rotation_angle -= 0.1; // Simulating camera rotation
+		upx = 0;
+		upy = 1;
+		upz = 0;
+
+		fontx = eyex + 2;
+		fonty = eyey + 0.2;
+		fontz = eyez - 1;
+		fontrotation = -90.0f;
+
 	}
 
 	else if(defaultCam == 3)
 	{
-		glm::vec3 eye ( 14, 15, 15);
-		glm::vec3 target (15, 0, 15);
-		glm::vec3 up (0, 0.1, 0);
-		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
+		eyex = 15;
+		eyey = 15;
+		eyez = 15;
+
+		targetx = 15;
+		targety = -515;
+		targetz = 15;
+
+		upx = 1;
+		upy = 0;
+		upz = 0;
+
+		fontx = eyex + 1.2;
+		fonty = eyey - 1;
+		fontz = eyez - 1;
+		fontrotation = -90.0f;
 	}
 
 	else if(defaultCam == 4)
 	{
-		glm::vec3 eye ( -5, 15, 15);
-		glm::vec3 target (15, 0, 15);
-		glm::vec3 up (0, 0.1, 0);
-		Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
+		eyex = -5;
+		eyey = 15;
+		eyez = 15;
+
+		targetx = 15;
+		targety = 0;
+		targetz = 15;
+
+		upx = 0;
+		upy = 1;
+		upz = 0;
+
+		fontx = eyex + 2;
+		fonty = eyey + 0.6;
+		fontz = eyez - 1;
+		fontrotation = -90.0f;
+
 	}
+
+	else if(defaultCam == 5)
+	{
+		eyex = playerHead->getX() + playerHead->getLength();
+		eyey = playerHead->getY();
+		eyez = playerHead->getZ() - 0.28;
+
+		targetx = playerHead->getX() + 500;
+		targety = playerHead->getY();
+		targetz = playerHead->getZ();
+
+		upx = 0;
+		upy = 1;
+		upz = 0;
+
+		fontx = eyex + 2;
+		fonty = eyey + 2.7;
+		fontz = eyez - 1;
+		fontrotation = -90.0f;
+
+	}
+
+	else if(defaultCam == 6)
+	{
+		if(pan == 1)
+        	heliCamPan(window);
+
+		heliCamMove(window);
+
+		eyex = heli_x;
+		eyey = heli_y;
+		eyez = heli_z;
+
+		targety = 0;
+		targetz = heli_z;
+
+		if(helirotation >= 0)
+		{
+			targetx = (2 * heli_x) - (heli_x * cos(helirotation * M_PI / 180.0f));
+		}
+		else
+		{
+			targetx = heli_x * cos(helirotation * M_PI / 180.0f);
+		}
+
+		upx = 1;
+		upy = 0;
+		upz = 0;
+
+		fontx = eyex + 1.2;
+		fonty = eyey - 1;
+		fontz = eyez - 1;
+		fontrotation = -90.0f;
+	}
+
+	glm::vec3 eye(eyex, eyey, eyez);
+	glm::vec3 target(targetx, targety, targetz);
+	glm::vec3 up(upx, upy, upz);
+	
+	Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
 
 }
 
@@ -1514,6 +1827,12 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
             case GLFW_KEY_X:
                 // do something ..
                 break;
+            case GLFW_KEY_UP:
+            case GLFW_KEY_DOWN:
+            case GLFW_KEY_LEFT:
+            case GLFW_KEY_RIGHT:
+            	grassSound.pause();
+            	break;
             default:
                 break;
         }
@@ -1534,10 +1853,26 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
             	break;
             case GLFW_KEY_4:
             	defaultCam = 4;
+            	break;
+            case GLFW_KEY_5:
+            	defaultCam = 5;
+            	break;	
+            case GLFW_KEY_6:
+            	prepareHeliCam(window);
+            	defaultCam = 6;
             	break;	
             case GLFW_KEY_SPACE:
             	if(air == 0)
             		jump();
+            case GLFW_KEY_F:
+            	moveFast();
+            	break;
+            case GLFW_KEY_S:
+            	moveSlow();
+            	break;
+            case GLFW_KEY_R:
+            	resetWorld();
+            	break;
             default:
                 break;
         }
@@ -1569,12 +1904,19 @@ void mouseButton (GLFWwindow* window, int button, int action, int mods)
 {
     switch (button) {
         case GLFW_MOUSE_BUTTON_LEFT:
-            if (action == GLFW_RELEASE)
-                triangle_rot_dir *= -1;
+            // if (action == GLFW_RELEASE)
+            //     triangle_rot_dir *= -1;
             break;
         case GLFW_MOUSE_BUTTON_RIGHT:
-            if (action == GLFW_RELEASE) {
-                rectangle_rot_dir *= -1;
+            if (action == GLFW_PRESS) 
+            {
+            	pan = 1;
+            	glfwGetCursorPos(window, &panoldx, &panoldy);
+            }
+            else if(action == GLFW_RELEASE)
+            {
+            	pan = 0;
+            	glfwSetCursorPos(window, 650, 350);
             }
             break;
         default:
@@ -1582,7 +1924,19 @@ void mouseButton (GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-GLFWwindow* window; // window desciptor/handle
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	if(defaultCam != 6)
+		return;
+	if(yoffset > 0)
+		heli_y -= 0.3;
+	else
+		heli_y += 0.3;
+	old_helix = heli_x;
+	old_heliz = heli_z;
+	glfwSetCursorPos(window, 650, 350);
+
+}
 
 
 void PollKeys()
@@ -1590,7 +1944,8 @@ void PollKeys()
 	if(glfwGetKey(window, GLFW_KEY_UP) && glfwGetKey(window, GLFW_KEY_LEFT))
 	{
 		int p1 = -1, p2 = -1;
-		int number = getCurrentBlock() - 1;
+		int number = getCurrentBlock();
+		int number1;
 		if(number >=0 && number < 900)
 		{
 			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
@@ -1602,9 +1957,10 @@ void PollKeys()
 		}
 
 		number = getCurrentBlock() + 30;
+		number1 = getCurrentBlock(3) + 30;
 		if(number >=0 && number < 900)
 		{
-			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength() && field[number1]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
 			{
 				p2 = 1;
 			}
@@ -1621,7 +1977,8 @@ void PollKeys()
 	else if(glfwGetKey(window, GLFW_KEY_UP) && glfwGetKey(window, GLFW_KEY_RIGHT))
 	{
 		int p1 = -1, p2 = -1;
-		int number = getCurrentBlock() + 1;
+		int number = getCurrentBlock();
+		int number1;
 		if(number >=0 && number < 900)
 		{
 			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
@@ -1633,9 +1990,10 @@ void PollKeys()
 		}
 
 		number = getCurrentBlock() + 30;
+		number1 = getCurrentBlock(3) + 30;
 		if(number >=0 && number < 900)
 		{
-			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength() && field[number1]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
 			{
 				p2 = 1;
 			}
@@ -1652,10 +2010,11 @@ void PollKeys()
 	else if(glfwGetKey(window, GLFW_KEY_DOWN) && glfwGetKey(window, GLFW_KEY_LEFT))
 	{
 		int p1 = -1, p2 = -1;
-		int number = getCurrentBlock() - 1;
+		int number = getCurrentBlock(3);
+		int number1;
 		if(number >=0 && number < 900)
 		{
-			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength() && playerBody->getZ() >= -1.20)
 			{
 				p1 = 1;
 			}
@@ -1664,9 +2023,10 @@ void PollKeys()
 		}
 
 		number = getCurrentBlock() - 30;
+		number1 = getCurrentBlock(3) - 30;
 		if(number >=0 && number < 900)
 		{
-			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength() && field[number1]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
 			{
 				p2 = 1;
 			}
@@ -1683,7 +2043,8 @@ void PollKeys()
 	else if(glfwGetKey(window, GLFW_KEY_DOWN) && glfwGetKey(window, GLFW_KEY_RIGHT))
 	{
 		int p1 = -1, p2 = -1;
-		int number = getCurrentBlock() + 1;
+		int number = getCurrentBlock();
+		int number1;
 		if(number >=0 && number < 900)
 		{
 			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
@@ -1695,9 +2056,10 @@ void PollKeys()
 		}
 
 		number = getCurrentBlock() - 30;
+		number1 = getCurrentBlock(3) - 30;
 		if(number >=0 && number < 900)
 		{
-			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength() && field[number1]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
 			{
 				p2 = 1;
 			}
@@ -1714,9 +2076,11 @@ void PollKeys()
 	else if(glfwGetKey(window, GLFW_KEY_UP))
 	{
 		int number = getCurrentBlock() + 30;
-		if(number >=0 && number < 900)
+		int number1 = getCurrentBlock(3) + 30;
+
+		if((number >=0 && number < 900 ) && (number1 >=0 && number1 < 900))
 		{
-			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength() && field[number1]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
 			{
 				moveForward();
 			}
@@ -1727,9 +2091,10 @@ void PollKeys()
 	else if(glfwGetKey(window, GLFW_KEY_DOWN))
 	{
 		int number = getCurrentBlock() - 30;
-		if(number >=0 && number < 900)
+		int number1 = getCurrentBlock(3) - 30;
+		if((number >=0 && number < 900 ) && (number1 >=0 && number1 < 900))
 		{
-			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength() && field[number1]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
 			{
 				moveBackward();
 			}
@@ -1739,42 +2104,63 @@ void PollKeys()
 	}
 	else if(glfwGetKey(window, GLFW_KEY_LEFT))
 	{
-		int number = getCurrentBlock() - 1;
+		int number = getCurrentBlock(3);
+		float ground;
+		if(number % 30 == 0 || number < 0)
+			ground = water[0]->getY();
+		else
+			ground = field[number]->getY();
 		if(number >=0 && number < 900)
 		{
-			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			if(ground <= playerLeftLeg->getY() - playerLeftLeg->getLength())
 			{
 				moveLeft();
 			}
 		}
 		else
+		{
 			moveLeft();
+		}
 	}
 	else if(glfwGetKey(window, GLFW_KEY_RIGHT))
 	{
-		int number = getCurrentBlock() + 1;
-		
+		int number = getCurrentBlock();
+		float ground;
+		if(number % 30 == 0 || number < 0 || number > 899)
+			ground = water[0]->getY();
+		else
+			ground = field[number]->getY();
 		if(number >=0 && number < 900)
 		{
-			if(field[number]->getY() <= playerLeftLeg->getY() - playerLeftLeg->getLength())
+			if(ground <= playerLeftLeg->getY() - playerLeftLeg->getLength())
 			{
 				moveRight();
 			}
 		}
 		else
+		{
 			moveRight();
+		}
 	}
 
-	int number = getCurrentBlock(2);
-	int ground;
+	int number = getCurrentBlock();
+	int number1 = getCurrentBlock(3);
+	int ground, ground1;
 	if(number >=0 && number < 900)
 		ground = field[number]->getY();
 	else
 	{
 		ground = water[0]->getY();
 	}
-	if(playerLeftLeg->getY() - playerLeftLeg->getLength() - ground > 0.2 && air == 0)
+	if(number1 >=0 && number1 < 900)
+		ground1 = field[number1]->getY();
+	else
 	{
+		ground1 = water[0]->getY();
+	}
+	if(((playerLeftLeg->getY() - playerLeftLeg->getLength() - ground > 0.2 && playerLeftLeg->getY() - playerLeftLeg->getLength() - ground1 > 0.2) || (number < 0 && number1 < 0)) && air == 0)
+	{
+		jumpheight = playerLeftLeg->getY();
 		air = 1;
 		direction = -1;
 	}
@@ -1823,6 +2209,7 @@ GLFWwindow* initGLFW (int width, int height)
 
     /* Register function to handle mouse click */
     glfwSetMouseButtonCallback(window, mouseButton);  // mouse button clicks
+    glfwSetScrollCallback(window, scroll_callback);
 
     return window;
 }
@@ -1840,17 +2227,17 @@ void initGL (GLFWwindow* window, int width, int height)
 
 	// load an image file directly as a new OpenGL texture
 	// GLuint texID = SOIL_load_OGL_texture ("beach.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_TEXTURE_REPEATS); // Buggy for OpenGL3
-	GLuint textureGrass = createTexture("grass.png");
+	textureGrass = createTexture("grass.png");
 	// check for an error during the load process
 	if(textureGrass == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	GLuint textureLava = createTexture("lava.png");
+	textureLava = createTexture("lava.png");
 	// check for an error during the load process
 	if(textureLava == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	GLuint textureWater = createTexture("water.png");
+	textureWater = createTexture("water.png");
 	// check for an error during the load process
 	if(textureWater == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
@@ -1860,7 +2247,7 @@ void initGL (GLFWwindow* window, int width, int height)
 	if(texturePlayer == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
 
-	GLuint textureDirt = createTexture("dirt.png");
+	textureDirt = createTexture("dirt.png");
 	// check for an error during the load process
 	if(textureDirt == 0 )
 		cout << "SOIL loading error: '" << SOIL_last_result() << "'" << endl;
@@ -1880,6 +2267,30 @@ void initGL (GLFWwindow* window, int width, int height)
 	// Get a handle for our "MVP" uniform
 	Matrices.MatrixID = glGetUniformLocation(programID, "MVP");
 
+	const char* fontfile = "arial.ttf";
+	GL3Font.font = new FTExtrudeFont(fontfile); // 3D extrude style rendering
+
+	if(GL3Font.font->Error())
+	{
+		cout << "Error: Could not load font `" << fontfile << "'" << endl;
+		glfwTerminate();
+		exit(EXIT_FAILURE);
+	}
+
+	fontProgramID = LoadShaders( "fontrender.vert", "fontrender.frag" );
+	GLint fontVertexCoordAttrib, fontVertexNormalAttrib, fontVertexOffsetUniform;
+	fontVertexCoordAttrib = glGetAttribLocation(fontProgramID, "vertexPosition");
+	fontVertexNormalAttrib = glGetAttribLocation(fontProgramID, "vertexNormal");
+	fontVertexOffsetUniform = glGetUniformLocation(fontProgramID, "pen");
+	GL3Font.fontMatrixID = glGetUniformLocation(fontProgramID, "MVP");
+	GL3Font.fontColorID = glGetUniformLocation(fontProgramID, "fontColor");
+
+	GL3Font.font->ShaderLocations(fontVertexCoordAttrib, fontVertexNormalAttrib, fontVertexOffsetUniform);
+	GL3Font.font->FaceSize(1);
+	GL3Font.font->Depth(0);
+	GL3Font.font->Outset(0, 0);
+	GL3Font.font->CharMap(ft_encoding_unicode);
+
 	
 	reshapeWindow (window, width, height);
 
@@ -1890,6 +2301,8 @@ void initGL (GLFWwindow* window, int width, int height)
 	glEnable (GL_DEPTH_TEST);
 	//glDepthFunc (GL_LEQUAL);
 	glDepthFunc(GL_LESS);
+
+
 
     cout << "VENDOR: " << glGetString(GL_VENDOR) << endl;
     cout << "RENDERER: " << glGetString(GL_RENDERER) << endl;
@@ -1924,19 +2337,50 @@ void draw ()
 
 }
 
+void drawFont()
+{
+	glm::mat4 MVP;
+	static int fontScale = 0;
+  	glm::vec3 fontColor = getRGBfromHue (fontScale);
+  	glUseProgram(fontProgramID);
+
+	Matrices.model = glm::mat4(1.0f);
+  	glm::mat4 translateText = glm::translate(glm::vec3(fontx, fonty, fontz)); 
+  	glm::mat4 scaleText = glm::scale(glm::vec3(0.25, 0.25, 0.25));
+  	glm::mat4 rotateText = glm::rotate((float)( fontrotation * M_PI / 180.0f ), glm::vec3(0, 1, 0)); 
+
+	Matrices.model *= (translateText * scaleText * rotateText);
+	if(defaultCam == 3 || defaultCam == 6)
+	{
+		glm::mat4 camerafix = glm::rotate((float)( -M_PI / 2.0f), glm::vec3(1, 0, 0));
+		Matrices.model *= camerafix;
+	}
+
+	MVP = Matrices.projection * Matrices.view * Matrices.model;
+
+	glUniformMatrix4fv(GL3Font.fontMatrixID, 1, GL_FALSE, &MVP[0][0]);
+  	glUniform3fv(GL3Font.fontColorID, 1, &fontColor[0]);
+
+  	sprintf(scoreboard, "Lives: %d  Level: %d   Score: %d", lives, level, score);
+
+  	if(lives < 0)
+  		sprintf(scoreboard, "Game Over. Level: %d Score %d Restart - R", level, score);
+
+	GL3Font.font->Render(scoreboard);
+
+	// font size and color changes
+	fontScale = (fontScale + 1) % 360;
+
+}
+
 void lavacheck()
 {
 	int k = 0;
-	// int cx = floor(playerBody->getX()), cz = floor(playerBody->getZ() + 0.56);
-	float cx = playerBody->getX(), cz = playerBody->getZ() + 0.56;
-	float cx1 = playerBody->getX(), cz1 = playerBody->getZ() + 0.94;
-	int cxx = floor(cx), czz = floor(cz);
-	int cxx1 = floor(cx1), czz1 = floor(cz1);
-	int number = (cxx * 30) + czz;
-	int number1 = (cxx1 * 30) + czz1;
+	int number = getCurrentBlock();
+	int number1 = getCurrentBlock(3);
 	if(number >= 0 && number < 900)
 	{
-		if(field[number]->getBlockType() == 4)
+		if(playerLeftLeg->getY() - playerLeftLeg->getLength() - field[number]->getY() <= 0.2 && field[number]->getBlockType() == 4)
 		{
 			initPlayer();
 			return;
@@ -1944,11 +2388,59 @@ void lavacheck()
 	}
 	if(number1 >= 0 && number1 < 900)
 	{
-		if	(field[number1]->getBlockType() == 4)
+		if	(playerLeftLeg->getY() - playerLeftLeg->getLength() - field[number1]->getY() <= 0.2 && field[number1]->getBlockType() == 4)
 		{
 			initPlayer();
 			return;
 		}
+	}
+}
+
+void initSound()
+{
+	grassSound.openFromFile("grass.ogg");
+	grassSound.setLoop(true);
+}
+
+void fallcheck()
+{
+	int number = getCurrentBlock();
+	int number1 = getCurrentBlock(3);
+	if(number >= 0 && number < 900)
+	{
+		if(field[number]->getBlockType() == 5)
+		{
+			if(playerLeftLeg->getY() - playerLeftLeg->getLength() - field[number]->getY() <= 0.1)
+			{
+				jumpheight = playerHead->getY();
+				return;
+			}
+		}
+	}
+
+	if(number1 >= 0 && number1 < 900)
+	{
+		if(field[number1]->getBlockType() == 5)
+		{
+			if(playerLeftLeg->getY() - playerLeftLeg->getLength() - field[number1]->getY() <= 0.1)
+			{
+				jumpheight = playerHead->getY();
+				return;
+			}
+		}
+	}
+}
+
+void goalCheck()
+{
+	int number = getCurrentBlock();
+	int number1 = getCurrentBlock(3);
+	if(number == 899 || number1 == 899)
+	{
+		level++;
+		lives++;
+		pitcount += 60;
+		initPlayer();
 	}
 }
 
@@ -1957,40 +2449,51 @@ int main (int argc, char** argv)
 	int width = 1300;
 	int height = 700;
 	srand(time(0));
+	initSound();
 
     GLFWwindow* window = initGLFW(width, height);
 
 	initGL (window, width, height);
 
     double last_update_time = glfwGetTime(), current_time;
+    double last_score_time = glfwGetTime(), cur_score_time;
 
     /* Draw in loop */
     while (!glfwWindowShouldClose(window)) {
 
         // OpenGL Draw commands
         draw();
-        // cout<<floor(playerHead->getX())<<endl;
-        // c.draw();
+    	drawFont();
         lavacheck();
 
         // Swap Frame Buffer in double buffering
         glfwSwapBuffers(window);
 
-        PollKeys();
+        if(lives >= 0)
+        	PollKeys();
 
-        // Poll for Keyboard and mouse events
         glfwPollEvents();
 
-        // Control based on time (Time based transformation like 5 degrees rotation every 0.5s)
-        current_time = glfwGetTime(); // Time in seconds
-        if ((current_time - last_update_time) >= 0.01) { // atleast 0.5s elapsed since last frame
-            // do something every 0.5 seconds ..
+        current_time = glfwGetTime();
 
-            last_update_time = current_time;
+        if ((current_time - last_update_time) >= 0.01) 
+        { 
+            last_update_time = current_time;            
+            movePillars();
             if(air != 0)
             	jump();
         }
-        // for(int j = 0; j<4000000; j++);
+
+        cur_score_time = glfwGetTime();
+
+        if (cur_score_time - last_score_time >= 1 && lives >= 0) 
+        {
+        	last_score_time = cur_score_time;
+        	score++;
+        }
+        stayWithGround();
+        fallcheck();
+        goalCheck();
     }
 
     glfwTerminate();
