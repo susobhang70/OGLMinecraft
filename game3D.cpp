@@ -41,7 +41,8 @@ float eyex, eyey, eyez, targetx, targety, targetz, upx, upy, upz, fontx, fonty, 
 GLFWwindow* window; // window desciptor/handle
 
 
-struct VAO {
+struct VAO 
+{
     GLuint VertexArrayID;
     GLuint VertexBuffer;
     GLuint ColorBuffer;
@@ -52,9 +53,11 @@ struct VAO {
     GLenum FillMode;
     int NumVertices;
 };
+
 typedef struct VAO VAO;
 
-struct GLMatrices {
+struct GLMatrices 
+{
 	glm::mat4 projection;
 	glm::mat4 model;
 	glm::mat4 view;
@@ -62,7 +65,8 @@ struct GLMatrices {
 	GLuint TexMatrixID; // For use with texture shader
 } Matrices;
 
-struct FTGLFont {
+struct FTGLFont 
+{
 	FTFont* font;
 	GLuint fontMatrixID;
 	GLuint fontColorID;
@@ -1274,12 +1278,19 @@ void refreshWorld()
 			{
 				temp = field[i*30 + j];
 				delete temp;
-				temp = new Cuboid(i, -1, j, 1, 1, 1);
-				temp->createCuboid(textureGrass, 5);
-				l += 2;
-				pillars.push_back(temp);
+				if(rand() % 2 == 0)
+				{
+					temp = new Cuboid(i, -1, j, 1, 1, 1);
+					temp->createCuboid(textureGrass, 5);
+					pillars.push_back(temp);
+				}
+				else
+				{
+					temp = new Cuboid(i, +1, j, 1, 1, 1);
+					temp->createCuboid(textureGrass, 5);
+				}
 				field[i*30 + j] = temp;
-
+				l+=2;
 			}
 		}
 	}
@@ -1316,10 +1327,18 @@ void initWorld(GLuint TextureIDGrass, GLuint TextureIDWater, GLuint TextureIDLav
 			}
 			else if(i * 30 + j == pits[l])
 			{
-				temp = new Cuboid(i, -1, j, 1, 1, 1);
-				temp->createCuboid(TextureIDGrass, 5);
+				if(rand() % 2 == 0)
+				{
+					temp = new Cuboid(i, -1, j, 1, 1, 1);
+					temp->createCuboid(TextureIDGrass, 5);
+					pillars.push_back(temp);
+				}
+				else
+				{
+					temp = new Cuboid(i, +1, j, 1, 1, 1);
+					temp->createCuboid(TextureIDGrass, 5);
+				}
 				l += 2;
-				pillars.push_back(temp);
 			}
 			else if(i * 30 + j == 899)
 			{
@@ -2400,6 +2419,8 @@ void initSound()
 {
 	grassSound.openFromFile("grass.ogg");
 	grassSound.setLoop(true);
+	levelupSound.openFromFile("levelup.ogg");
+	levelupSound.setLoop(false);
 }
 
 void fallcheck()
@@ -2438,6 +2459,7 @@ void goalCheck()
 	if(number == 899 || number1 == 899)
 	{
 		level++;
+		levelupSound.play();
 		lives++;
 		pitcount += 60;
 		initPlayer();
