@@ -1,3 +1,5 @@
+# OGL Minecraft
+
 3D Game using OpenGL 3.3 with GLAD, GLFW, GLM, and SOIL Libraries
 
 Used Minecraft like textures to render the world.
